@@ -1390,7 +1390,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
 	ERC20 public sbd;
     uint256 maxUint256 = 2**256 - 1;
     uint256 public oneYear;
-    uint256 public userFlmRewardRate;
     bool public initRate;
     bool public initTeamRate;
 	address public usdt;
@@ -1439,17 +1438,9 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     mapping(address => uint256) public activeInviteAmount;
     mapping(address => uint256) public activeUsedAmount;
     mapping(address => mapping(uint256 => address)) public userTeamReward;
-    mapping(uint256 => uint256) public adminFlmReward;
     mapping(address => address) public userTeam;
     mapping(address =>mapping(address => bool)) public blackList;
-    event allFlmRate(
-        uint256 adminFlmRate4,
-        uint256 adminFlmRate3,
-        uint256 adminFlmRate2,
-        uint256 adminFlmRate1,
-        uint256 adminFlmRate0,
-        address user
-    );
+ 
     event allInvite(
         address recommender1,
         address recommender2,
@@ -1503,7 +1494,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         userBuyMax = 2000000000000000000;
         registerId =1;
         receiveRemainingTeamRewards = msg.sender;
-        userFlmRewardRate = 10;
         svt = _svt;
         supNode = _supNode;
         bigNode = _bigNode;
@@ -1543,7 +1533,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         userBuyMax = _amount;
     }
   
-	function setFDTAddress(ERC20 _sbd) public onlyOwner {
+	function setSBDAddress(ERC20 _sbd) public onlyOwner {
 		sbd = _sbd;
 	}
 	function setSalePrice(uint256 _salePrice) public onlyOwner {
@@ -1778,16 +1768,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
 
     }
 
-    function setUserFlmRewards(uint256 _rate) public onlyOwner {
-        userFlmRewardRate = _rate;
-    }
-    function setAdminFlmReward(uint256[] memory _rate) public onlyOwner {
-        // require(_id <3 ,"id input error");
-        for(uint256 i = 0 ; i < 5 ; i++) {
-        adminFlmReward[i] = _rate[i];
-
-        }
-    }
+  
     function addTeamRate(uint256[] memory _rate) public onlyOwner{
         require(!initTeamRate);
         require(_rate.length ==5);
@@ -1950,14 +1931,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             usdtAmount,
             sbdAmount
             );
-            emit allFlmRate(
-            adminFlmReward[4],
-            adminFlmReward[3],
-            adminFlmReward[2],
-            adminFlmReward[1],
-            adminFlmReward[0],
-            msg.sender
-            );
+
             emit allInvite(
             invite[4],
             invite[3],
