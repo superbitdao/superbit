@@ -25,6 +25,10 @@ using SafeMath for uint256;
 constructor (){
         oneYear = 31536000;
 
+
+}
+function setSvt(address _addr) public onlyOwner {
+    svt = _addr;
 }
     function setAllowAddr(address _addr, bool _set) public onlyOwner {
          allowAddr[_addr] = _set;
