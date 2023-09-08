@@ -14,7 +14,10 @@ contract Lock  is Ownable{
     struct lockInfo{
         uint256 amount;
         uint256 weight;
-        uint256 time;
+        uint256 lockStartTime;
+        uint256 lockTime;
+        uint256 svtAmount;
+
     }
     IERC20 sbd;
     address public svt;
@@ -49,20 +52,55 @@ contract Lock  is Ownable{
     function lock(uint256 _date,uint256 _amount) public {
         uint256 _lockTime = 0;
         uint256 _Weights = 0;
+        uint256 _svtAmount = 0;
         for(uint256 i = 0 ; i < date.length ; i++){
             if(_date == date[i]){
             _Weights = Weights[i];
             _lockTime = _date.mul(oneMonth);
-            lockInfo memory _lockinfo = lockInfo({amount:_amount,weight:_Weights,time:_lockTime});
+            _svtAmount = _amount.mul(Weights[i]);
+            lockInfo memory _lockinfo = lockInfo({amount:_amount,weight:_Weights,lockStartTime:block.number,lockTime:_lockTime, svtAmount:_svtAmount});
             userLockInfo[msg.sender].push(_lockinfo);
             }
         }
+        ISVT(svt).mint(msg.sender, _svtAmount);
 
     }
+    
+    function getUserCanClaim() public view returns(uint256 ) {
+        uint256 total = 0;
+        for(uint256 i =0 ; i< userLockInfo[msg.sender].length ; i++ ) {
+            total= total.add(userLockInfo[msg.sender][i].amount.mul(block.number.sub(userLockInfo[msg.sender][i].lockStartTime)).div(userLockInfo[msg.sender][i].lockTime));
+        }
+        return total;
+    }
+    function getUserLockLength(address _user) public view returns(uint256 ){
+        return userLockInfo[_user].length;
+    } 
     function withdraw(uint256 _amount) public {
-
-        sbd.transfer(msg.sender, _amount);
-        ISVT(svt).burn(msg.sender, _amount);
+        require(getUserCanClaim() >= 0, "Insufficient withdrawal limit");
+        uint256 total = 0;
+        uint256 per = 0;
+        
+        for(uint256 i = 0; i < userLockInfo[msg.sender].length ; i++) {
+            if(userLockInfo[msg.sender][i].amount ==0){
+                continue;
+            }
+            per = userLockInfo[msg.sender][i].amount.mul(block.number.sub(userLockInfo[msg.sender][i].lockStartTime)).div(userLockInfo[msg.sender][i].lockTime);
+            total= total.add(per);
+            if(userLockInfo[msg.sender][i].amount > per){
+            userLockInfo[msg.sender][i].amount = userLockInfo[msg.sender][i].amount.sub(per);
+            }else{
+                userLockInfo[msg.sender][i].amount  =0;
+            }
+            // lockInfo memory _lockinfo = lockInfo({amount:_amount,weight:_Weights,lockStartTime:block.number,lockTime:_lockTime, svtAmount:_svtAmount});
+            userLockInfo[msg.sender][i].lockStartTime = block.number;
+            userLockInfo[msg.sender][i].svtAmount = userLockInfo[msg.sender][i].svtAmount.sub(per.mul(userLockInfo[msg.sender][i].weight));
+            ISVT(svt).burn(msg.sender, per.mul(userLockInfo[msg.sender][i].weight));
+            if(_amount == total){
+            sbd.transfer(msg.sender, _amount);
+                
+            }
+        }
     }
     
 }

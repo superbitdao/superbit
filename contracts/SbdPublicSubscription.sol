@@ -1362,6 +1362,9 @@ interface IBigNode{
 interface ISmallNode{
         function mintSmallNode(address _to) external ;
 }
+interface IOgLock{
+        function lock(address _user,uint256 _svtAmount) external;
+}
 interface ISVT{
     function mint(address _to, uint256 _amount)external;
     function burn(address _to, uint256 _amount) external;
@@ -1376,24 +1379,24 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         address assign;
         uint256 rate;
     }
-    struct LockInfo{
-        address user;
-        uint256 amount;
-        uint256 lockBlock;
-    }
+
     EnumerableSet.AddressSet private adminsLevelTwo;
     EnumerableSet.AddressSet private adminsLevelThree;
     EnumerableSet.AddressSet private adminsLevelFour;
     EnumerableSet.AddressSet private adminsLevelFive;
+    EnumerableSet.AddressSet private adminsLevelSix;
+    EnumerableSet.AddressSet private adminsLevelSeven;
+    EnumerableSet.AddressSet private adminsLevelEight;
+    EnumerableSet.AddressSet private adminsLevelNine;
     EnumerableSet.AddressSet private supAccount;
 
 	ERC20 public sbd;
     uint256 maxUint256 = 2**256 - 1;
-    uint256 public oneYear;
     bool public initRate;
     bool public initTeamRate;
 	address public usdt;
     address public svt;
+    address public ogLock;
     address public supNode;
     address public bigNode;
     address public smallNode;
@@ -1404,6 +1407,10 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     uint256 public maxThree;
     uint256 public maxFour;
     uint256 public maxFive;
+    uint256 public maxSix;
+    uint256 public maxSeven;
+    uint256 public maxEight;
+    uint256 public maxNine;
     uint256 public activateAccountUsedAmount;
     uint256 public userBuyMax;
     uint256[] public inviteRate;
@@ -1412,35 +1419,37 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     uint256 public totalDonate;
     uint256[] public validNumbers =
     [
-        200000000,
-        500000000,
-        1000000000,
-        2000000000,
-        3000000000,
-        4000000000,
-        5000000000,
-        6000000000,
-        7000000000,
-        8000000000,
-        9000000000,
-        10000000000
+        200000000000000000000,
+        500000000000000000000,
+        1000000000000000000000,
+        2000000000000000000000,
+        3000000000000000000000,
+        4000000000000000000000,
+        5000000000000000000000,
+        6000000000000000000000,
+        7000000000000000000000,
+        8000000000000000000000,
+        9000000000000000000000,
+        10000000000000000000000
     ];
     assignAndRate[] public assignAndRates;
 	mapping(address => uint256) public userTotalBuy;
     mapping(address => bool) public isRecommender;
     mapping(address => address) public recommender;
-    mapping(address => LockInfo[]) public userLockInfos;
     mapping(address => address[]) public setAdminLevelTwo_;
     mapping(address => address[]) public setAdminLevelThree_;
     mapping(address => address[]) public setAdminLevelFour_;
     mapping(address => address[]) public setAdminLevelFive_;
+    mapping(address => address[]) public setAdminLevelSix_;
+    mapping(address => address[]) public setAdminLevelSeven_;
+    mapping(address => address[]) public setAdminLevelEight_;
+    mapping(address => address[]) public setAdminLevelNine_;
     mapping(address => bool) public isNotRegister;
     mapping(address => uint256) public activeInviteAmount;
     mapping(address => uint256) public activeUsedAmount;
     mapping(address => mapping(uint256 => address)) public userTeamReward;
     mapping(address => address) public userTeam;
     mapping(address =>mapping(address => bool)) public blackList;
- 
     event allInvite(
         address recommender1,
         address recommender2,
@@ -1481,15 +1490,34 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         require(checkAddrForAdminLevelFive(msg.sender));
         _;
     }
-
-	constructor(ERC20 _sbd,  address _usdt, address _svt, address _supNode , address _bigNode,address _smallNode) {
+    modifier onlyAdminSix(){
+        require(checkAddrForAdminLevelSix(msg.sender));
+        _;
+    }
+    modifier onlyAdminSeven(){
+        require(checkAddrForAdminLevelSeven(msg.sender));
+        _;
+    }
+    modifier onlyAdminEight(){
+        require(checkAddrForAdminLevelEight(msg.sender));
+        _;
+    }
+    modifier onlyAdminNine(){
+        require(checkAddrForAdminLevelNine(msg.sender));
+        _;
+    }
+	constructor(ERC20 _sbd,  address _usdt, address _svt, address _supNode , address _bigNode,address _smallNode,address _ogLock) {
 		sbd = _sbd;
 		usdt = _usdt;
-		salePrice = 11;
+		salePrice = 3;
         maxTwo = 50;
         maxThree = 50;
         maxFour = 50;
         maxFive = 50;
+        maxSix = 50;
+        maxSeven = 50;
+        maxEight = 50;
+        maxNine = 50;
         activateAccountUsedAmount = 50;
         userBuyMax = 2000000000000000000;
         registerId =1;
@@ -1498,8 +1526,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         supNode = _supNode;
         bigNode = _bigNode;
         smallNode = _smallNode;
-        oneYear = 31536000;
-        
+        ogLock = _ogLock;
 	}
     function setSupNode(address _supNode) public onlyOwner{
         supNode = _supNode;
@@ -1567,6 +1594,34 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }
         maxFive = _max;
     }
+     function setAdminForSix(uint256 _max) public onlyOwner {
+        if(_max ==  0) {
+            maxSix = maxUint256;
+            return;
+        }
+        maxSix = _max;
+    }
+     function setAdminForSeven(uint256 _max) public onlyOwner {
+        if(_max ==  0) {
+            maxSeven = maxUint256;
+            return;
+        }
+        maxSeven = _max;
+    }
+     function setAdminForEight(uint256 _max) public onlyOwner {
+        if(_max ==  0) {
+            maxEight = maxUint256;
+            return;
+        }
+        maxEight = _max;
+    }
+     function setAdminForNine(uint256 _max) public onlyOwner {
+        if(_max ==  0) {
+            maxNine = maxUint256;
+            return;
+        }
+        maxNine = _max;
+    }
  
     function checkAddrForSupAccount(address _user) public view returns(bool) {
         return supAccount.contains(_user);
@@ -1583,8 +1638,30 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     function checkAddrForAdminLevelFive(address _user) public view returns(bool){
         return adminsLevelFive.contains(_user);
     }
+    function checkAddrForAdminLevelSix(address _user) public view returns(bool){
+        return adminsLevelSix.contains(_user);
+    }
+    function checkAddrForAdminLevelSeven(address _user) public view returns(bool){
+        return adminsLevelSeven.contains(_user);
+    }
+    function checkAddrForAdminLevelEight(address _user) public view returns(bool){
+        return adminsLevelEight.contains(_user);
+    }
+    function checkAddrForAdminLevelNine(address _user) public view returns(bool){
+        return adminsLevelNine.contains(_user);
+    }
+    function checkTeam(address _user) public view returns(bool) {
+        address team = recommender[_user];
+        for(uint256 i = 0 ;i < 9 ;i++){
+            if(msg.sender == team){
+                return true;
+            }
+            team = recommender[team];
+        }
+        return false;
+    }
     function setBlackList(address _user) public onlyAdminTwo{
-        require(msg.sender == recommender[_user] || msg.sender == recommender[recommender[_user]] ||msg.sender == recommender[recommender[recommender[_user]]] );
+        require(checkTeam(_user));
         blackList[msg.sender][_user] = !blackList[msg.sender][_user];
         emit blackUser(msg.sender,_user );
     }
@@ -1593,7 +1670,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
              recommender[_addr] = _admin;
              isRecommender[_addr] = true;
              }else{
-            revert("Please check and re-enter if the input is wrong");
+            revert();
              }
     }
     function setAdminLevelTwo(address[] memory _addr) public onlyOwner{
@@ -1646,7 +1723,54 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             emit allRegister(0, msg.sender, _addr[i]);
         }
     }
-
+       function setAdminLevelSix(address[] memory _addr) public onlyAdminFive {
+        require(setAdminLevelSix_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
+        for(uint i=0;i<_addr.length;i++){
+            require(msg.sender != _addr[i]);
+            require(!isNotRegister[_addr[i]]);
+            require(!checkAddrForAdminLevelSix(_addr[i]));
+            inviteFunc(_addr[i],msg.sender);
+            adminsLevelSix.add(_addr[i]);
+            setAdminLevelSix_[msg.sender].push(_addr[i]);
+            emit allRegister(0, msg.sender, _addr[i]);
+        }
+    }
+   function setAdminLevelSeven(address[] memory _addr) public onlyAdminSix {
+        require(setAdminLevelSeven_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
+        for(uint i=0;i<_addr.length;i++){
+            require(msg.sender != _addr[i]);
+            require(!isNotRegister[_addr[i]]);
+            require(!checkAddrForAdminLevelSeven(_addr[i]));
+            inviteFunc(_addr[i],msg.sender);
+            adminsLevelSeven.add(_addr[i]);
+            setAdminLevelSeven_[msg.sender].push(_addr[i]);
+            emit allRegister(0, msg.sender, _addr[i]);
+        }
+    }
+       function setAdminLevelEight(address[] memory _addr) public onlyAdminSeven {
+        require(setAdminLevelEight_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
+        for(uint i=0;i<_addr.length;i++){
+            require(msg.sender != _addr[i]);
+            require(!isNotRegister[_addr[i]]);
+            require(!checkAddrForAdminLevelEight(_addr[i]));
+            inviteFunc(_addr[i],msg.sender);
+            adminsLevelEight.add(_addr[i]);
+            setAdminLevelEight_[msg.sender].push(_addr[i]);
+            emit allRegister(0, msg.sender, _addr[i]);
+        }
+    }
+    function setAdminLevelNine(address[] memory _addr) public onlyAdminEight {
+        require(setAdminLevelNine_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
+        for(uint i=0;i<_addr.length;i++){
+            require(msg.sender != _addr[i]);
+            require(!isNotRegister[_addr[i]]);
+            require(!checkAddrForAdminLevelNine(_addr[i]));
+            inviteFunc(_addr[i],msg.sender);
+            adminsLevelNine.add(_addr[i]);
+            setAdminLevelNine_[msg.sender].push(_addr[i]);
+            emit allRegister(0, msg.sender, _addr[i]);
+        }
+    }
     function removeAdminLevelTwo(address _addr) public onlyOwner{
         adminsLevelTwo.remove(_addr);
         for(uint256 i = 0 ; i < setAdminLevelTwo_[msg.sender].length; i ++) {
@@ -1678,11 +1802,52 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }
     }
     function removeAdminLevelFive(address _addr) public onlyAdminFour{
-        adminsLevelFive.remove(_addr);
+            adminsLevelFive.remove(_addr);
                for(uint256 i = 0 ; i < setAdminLevelFour_[msg.sender].length; i ++) {
             if(_addr == setAdminLevelFour_[msg.sender][i]){
                 setAdminLevelFour_[msg.sender][i] = setAdminLevelFour_[msg.sender][setAdminLevelFour_[msg.sender].length - 1];
                 setAdminLevelFour_[msg.sender].pop();
+                return;
+            }
+        }
+           
+    }
+      function removeAdminLevelSix(address _addr) public onlyAdminFive{
+            adminsLevelSix.remove(_addr);
+               for(uint256 i = 0 ; i < setAdminLevelSix_[msg.sender].length; i ++) {
+            if(_addr == setAdminLevelSix_[msg.sender][i]){
+                setAdminLevelSix_[msg.sender][i] = setAdminLevelSix_[msg.sender][setAdminLevelSix_[msg.sender].length - 1];
+                setAdminLevelSix_[msg.sender].pop();
+                return;
+            }
+        }
+           
+    }  function removeAdminLevelSeven(address _addr) public onlyAdminSix{
+            adminsLevelSeven.remove(_addr);
+               for(uint256 i = 0 ; i < setAdminLevelSeven_[msg.sender].length; i ++) {
+            if(_addr == setAdminLevelSeven_[msg.sender][i]){
+                setAdminLevelSeven_[msg.sender][i] = setAdminLevelSeven_[msg.sender][setAdminLevelSeven_[msg.sender].length - 1];
+                setAdminLevelSeven_[msg.sender].pop();
+                return;
+            }
+        }
+           
+    }  function removeAdminLevelEight(address _addr) public onlyAdminSeven{
+            adminsLevelEight.remove(_addr);
+               for(uint256 i = 0 ; i < setAdminLevelEight_[msg.sender].length; i ++) {
+            if(_addr == setAdminLevelEight_[msg.sender][i]){
+                setAdminLevelEight_[msg.sender][i] = setAdminLevelEight_[msg.sender][setAdminLevelEight_[msg.sender].length - 1];
+                setAdminLevelEight_[msg.sender].pop();
+                return;
+            }
+        }
+           
+    }  function removeAdminLevelNine(address _addr) public onlyAdminEight{
+            adminsLevelNine.remove(_addr);
+               for(uint256 i = 0 ; i < setAdminLevelNine_[msg.sender].length; i ++) {
+            if(_addr == setAdminLevelNine_[msg.sender][i]){
+                setAdminLevelNine_[msg.sender][i] = setAdminLevelNine_[msg.sender][setAdminLevelNine_[msg.sender].length - 1];
+                setAdminLevelNine_[msg.sender].pop();
                 return;
             }
         }
@@ -1698,16 +1863,24 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             return maxFour;
         }else if(checkAddrForAdminLevelFive(_user)){
             return maxFive;
+        }else if(checkAddrForAdminLevelSix(_user)){
+            return maxSix;
+        }else if(checkAddrForAdminLevelSeven(_user)){
+            return maxSeven;
+        }else if(checkAddrForAdminLevelEight(_user)){
+            return maxEight;
+        }else if(checkAddrForAdminLevelNine(_user)){
+            return maxNine;
         }
         return 0;
     }
-  function setActivateAccountForL2(address[] memory _user)public  onlyAdminTwo {
+  function setActivateAccountForL2(address[] memory _user) public  onlyAdminTwo {
         for(uint256 i = 0 ; i < _user.length ; i++){
             require(!checkAddrForSupAccount(msg.sender) && isNotRegister[msg.sender] == true);
             supAccount.add(_user[i]);
         }
     }
-    function setActivateAccountForL5(address[] memory  _user) public onlyAdminFive{
+    function setActivateAccountForL9(address[] memory  _user) public onlyAdminNine{
     require(activeInviteAmount[msg.sender] <= getMax(msg.sender) && _user.length < getMax(msg.sender));
         for(uint256 i =0 ; i < _user.length ;i++) {
             require(!isNotRegister[_user[i]]);
@@ -1715,12 +1888,19 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             supAccount.add(_user[i]);
             inviteFunc(_user[i],msg.sender);
             activeInviteAmount[msg.sender] = activeInviteAmount[msg.sender].add(1);
-            userTeamReward[_user[i]][0] = msg.sender;
-            userTeamReward[_user[i]][1] = recommender[msg.sender];
-            userTeamReward[_user[i]][2] = recommender[recommender[msg.sender]];
-            userTeamReward[_user[i]][3] = recommender[recommender[recommender[msg.sender]]];
-            userTeamReward[_user[i]][4] = recommender[recommender[recommender[recommender[msg.sender]]]];
-
+            // userTeamReward[_user[i]][0] = msg.sender; //9
+            // userTeamReward[_user[i]][1] = recommender[msg.sender];//8
+            // userTeamReward[_user[i]][2] = recommender[recommender[msg.sender]];//7
+            // userTeamReward[_user[i]][3] = recommender[recommender[recommender[msg.sender]]];//6
+            // userTeamReward[_user[i]][4] = recommender[recommender[recommender[recommender[msg.sender]]]];//5
+            // userTeamReward[_user[i]][5] = recommender[recommender[recommender[recommender[recommender[msg.sender]]]]];//4
+            // userTeamReward[_user[i]][6] = recommender[recommender[recommender[recommender[recommender[recommender[msg.sender]]]]]];//3
+            // userTeamReward[_user[i]][7] = recommender[recommender[recommender[recommender[recommender[recommender[recommender[msg.sender]]]]]]];//2
+            // userTeamReward[_user[i]][8] = recommender[recommender[recommender[recommender[recommender[recommender[recommender[recommender[msg.sender]]]]]]]];//1
+            for(uint256 j = 1 ; j < 9 ; j ++){
+                userTeamReward[_user[i]][0] = msg.sender; 
+                userTeamReward[_user[i]][j] = recommender[userTeamReward[_user[i]][j - 1 ]];
+            }
             emit allRegister(0, msg.sender, _user[i]);
         }
     }
@@ -1735,7 +1915,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             assignAndRate memory ar = assignAndRate({assign:_addr[i],rate:_rate[i]});
             assignAndRates.push(ar);
         }
-        // require(getRate() <= 100 , 'The non-allocation ratio exceeds the limit, please modify the allocation ratio first');
     }
 
     function checkRepeat(address _addr) internal view returns(bool){
@@ -1756,9 +1935,8 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             }
         }
     }
-    revert("The address you removed does not exist");
+    revert();
 }
-
     function setAssignAddressAndRatio(uint256 _id, address _addr,uint256 _rate) public onlyOwner{
         require(_id < assignAndRates.length);
         assignAndRates[_id] = assignAndRate({
@@ -1767,21 +1945,17 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         });
 
     }
-
-  
     function addTeamRate(uint256[] memory _rate) public onlyOwner{
         require(!initTeamRate);
-        require(_rate.length ==5);
+        require(_rate.length ==9);
         for(uint256 i = 0 ;i < _rate.length; i++){
             teamRate.push(_rate[i]);
         }
-        // require(getRate() <= 100,"The rate must be within one hundred");
         initTeamRate = true;
     }
    function setTeamRate(uint256 _id, uint256 _rate) public onlyOwner {
        require(_id < teamRate.length);
        teamRate[_id] = _rate;
-        // require(getRate() <= 100,"The rate must be within one hundred");
 
    }
     function addInviteRate(uint256[] memory _rate) public onlyOwner{
@@ -1790,14 +1964,12 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         for(uint256 i = 0; i < _rate.length; i++) {
             inviteRate.push(_rate[i]);
         }
-        // require(getRate() < 100,"The rate must be within one hundred");
         initRate = true;
 
     }
     function setInviteRate(uint256 _id , uint256 _rate) public onlyOwner{
         require(_id < inviteRate.length, 'input error');
         inviteRate[_id] = _rate;
-        // require(getRate() <= 100,"The rate must be within one hundred");
     }
 
     function getRate() public view returns(uint256){
@@ -1855,16 +2027,16 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
 
        if(!checkAddrForSupAccount(msg.sender)){
             supAccount.add(msg.sender);
-        } if(fee.div(10**6) == 10000){
+        } if(fee.div(10**18) == 10000){
             ISupNode(supNode).mintSupNode(msg.sender);
-        }else if(fee.div(10**6) == 5000 ||
-                fee.div(10**6) == 6000  ||
-                fee.div(10**6) == 7000  ||
-                fee.div(10**6) == 9000  ||
-                fee.div(10**6) == 9000
+        }else if(fee.div(10**18) == 5000 ||
+                fee.div(10**18) == 6000  ||
+                fee.div(10**18) == 7000  ||
+                fee.div(10**18) == 9000  ||
+                fee.div(10**18) == 9000
                 ){
             IBigNode(bigNode).mintBigNode(msg.sender);
-        }else if(fee.div(10**6) == 2000 || fee.div(10**6) ==3000 || fee.div(10**6) == 4000 ) {
+        }else if(fee.div(10**18) == 2000 || fee.div(10**18) ==3000 || fee.div(10**18) == 4000 ) {
             ISmallNode(smallNode).mintSmallNode(msg.sender);
         }
         address[invitationLevel] memory invite;
@@ -1884,44 +2056,19 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
                     for(uint i = 0; i< invitationLevel;i++){
                    IERC20(usdt).transfer(invite[i], fee.mul(inviteRate[i]).div(100));
                     }
-                    if(
-                        blackList[userTeamReward[msg.sender][3]][userTeamReward[msg.sender][2]] &&
-                        blackList[userTeamReward[msg.sender][3]][userTeamReward[msg.sender][1]] && 
-                        blackList[userTeamReward[msg.sender][3]][userTeamReward[msg.sender][0]]){
-                       IERC20(usdt).transfer(receiveRemainingTeamRewards, fee.mul(teamRate[0].add(teamRate[1]).add(teamRate[2])).div(100));
-                    }else if(blackList[userTeamReward[msg.sender][3]][userTeamReward[msg.sender][1]] ){
-                       IERC20(usdt).transfer(userTeamReward[msg.sender][2], fee.mul(teamRate[2]).div(100));
-                        IERC20(usdt).transfer(userTeamReward[msg.sender][0], fee.mul(teamRate[0]).div(100));
-                        IERC20(usdt).transfer(receiveRemainingTeamRewards, fee.mul(teamRate[1]).div(100));
-                    }else if(blackList[userTeamReward[msg.sender][3]][userTeamReward[msg.sender][0]]){
-                        IERC20(usdt).transfer(receiveRemainingTeamRewards, fee.mul(teamRate[0]).div(100));
-                        IERC20(usdt).transfer(userTeamReward[msg.sender][1], fee.mul(teamRate[1]).div(100));
-                        IERC20(usdt).transfer(userTeamReward[msg.sender][2], fee.mul(teamRate[2]).div(100));
-                    
-                    }else if(blackList[userTeamReward[msg.sender][3]][userTeamReward[msg.sender][2]]){
-                        IERC20(usdt).transfer(receiveRemainingTeamRewards, fee.mul(teamRate[2]).div(100));
-                        IERC20(usdt).transfer(userTeamReward[msg.sender][1], fee.mul(teamRate[1]).div(100));
-                        IERC20(usdt).transfer(userTeamReward[msg.sender][0], fee.mul(teamRate[0]).div(100));
-                    }
-                    else{
+                 
                         for(uint i = 0 ; i < 3 ;i ++){
-                       IERC20(usdt).transfer(userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(100));
+                            if(blackList[userTeamReward[msg.sender][7]][userTeamReward[msg.sender][i]]){
+                                continue;
+                            }
+                       IERC20(usdt).transferFrom(msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(100));
                         }
-                    }
-
-            IERC20(usdt).transfer(userTeamReward[msg.sender][3], fee.mul(teamRate[3]).div(100));
-            IERC20(usdt).transfer(userTeamReward[msg.sender][4], fee.mul(teamRate[4]).div(100));
         sbd.transfer(msg.sender, sbdAmount);
         ISVT(svt).mint(msg.sender,svtAmount);
+        sbd.transfer(ogLock, svtAmount);
+        IOgLock(ogLock).lock(msg.sender,svtAmount);
         userTotalBuy[msg.sender] = userTotalBuy[msg.sender].add(fee);
         totalDonate = totalDonate.add(fee);
-        LockInfo memory _lockInfo = LockInfo({
-            user:msg.sender,
-            amount:svtAmount,
-            lockBlock:block.number
-        });
-        userLockInfos[msg.sender].push(_lockInfo);
-       
             emit allRecord(
             buyId,
             salePrice_,
@@ -1947,34 +2094,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             );
         buyId++;
     }
-    function getUserCanClaim(address _user) public view returns(uint256) {
-        uint256 total = 0;
-        for(uint256 i = 0 ; i<getUserLockLength(_user);i++){
-            total = total.add(userLockInfos[_user][i].amount.mul(block.number.sub(userLockInfos[_user][i].lockBlock)).div(oneYear));
-        }
-        return total;
-    }
-    function Claim(uint256 amount) public nonReentrant whenNotPaused{
-        require(getUserCanClaim(msg.sender) > 0 , "Insufficient funds for delegated withdrawal");
-        uint256 totalTransfer = 0;
-        for(uint256 i = 0 ; i<getUserLockLength(msg.sender);i++){
-            uint256 claimAmount =  userLockInfos[msg.sender][i].amount.mul(block.number.sub(userLockInfos[msg.sender][i].lockBlock)).div(oneYear);
-            totalTransfer = totalTransfer.add(claimAmount);
-            userLockInfos[msg.sender][i].amount = userLockInfos[msg.sender][i].amount.sub(claimAmount);
-            userLockInfos[msg.sender][i].lockBlock = block.number;
-            if(amount >= totalTransfer){
-                sbd.transfer(msg.sender, amount);
-                ISVT(svt).burn(msg.sender,amount);
-            }else{
-                revert("Insufficient funds for delegated withdrawal");
-            }
-        }
 
-
-    }
-    function getUserLockLength(address _user) public view returns(uint256) {
-        return userLockInfos[_user].length;
-    } 
     function getActivateAccount() public view returns(address[] memory) {
         return supAccount.values();
     }
@@ -1999,10 +2119,23 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
       function getAdminsLevelFiveLength(address _adminFive) public view returns(uint256) {
         return setAdminLevelFive_[_adminFive].length;
     }
-    
-  
+       function getAdminsLevelSixLength(address _adminSix) public view returns(uint256) {
+        return setAdminLevelSix_[_adminSix].length;
+    }   function getAdminsLevelSevenLength(address _adminSeven) public view returns(uint256) {
+        return setAdminLevelSeven_[_adminSeven].length;
+    }   function getAdminsLevelEightLength(address _adminEight) public view returns(uint256) {
+        return setAdminLevelEight_[_adminEight].length;
+    }   function getAdminsLevelNineLength(address _adminNine) public view returns(uint256) {
+        return setAdminLevelNine_[_adminNine].length;
+    }
+    function receiveSbd(uint256 _usdtAmount) public view returns(uint256 ){
+        return _usdtAmount.mul(salePrice.div(1000));
+    }
+    function receiveSvt(uint256 _usdtAmount) public view returns(uint256 ){
+        return receiveSbd(_usdtAmount).mul(8).div(10);
+    }
     function getValue() public view returns(uint256) {
-        return getBalanceOfSbd()*(salePrice/1000);
+        return getBalanceOfSbd().mul(salePrice.div(1000));
     }
    
     receive() external payable {}
