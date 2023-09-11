@@ -2263,7 +2263,7 @@ contract BigNode is ERC721,Ownable,ReentrancyGuard{
 
     Counters.Counter private _idTracker;
     EnumerableSet.AddressSet private whiteList;
-    
+    uint256 public totalMint;
     string public baseURI;
     string public baseExtension = ".json";
     uint256 public initAmount;
@@ -2271,8 +2271,12 @@ contract BigNode is ERC721,Ownable,ReentrancyGuard{
     constructor() ERC721("BigNode", "BigNode"){
     baseURI = "https://.ipfs.nftstorage.link/";
     initAmount = 300;
+    totalMint = 1;
 }
     //onlyOwner
+    function setInitAmount(uint256 _amount) public onlyOwner {
+        initAmount = _amount;
+    }
     function addWhiteListUser(address[] memory _users) public onlyOwner {
         for(uint256 i = 0; i < _users.length; i++) {
             require(!checkIsNotWhiteListUser(_users[i]), "There is already a whitelist account in the user, please check and try again");
@@ -2296,7 +2300,7 @@ contract BigNode is ERC721,Ownable,ReentrancyGuard{
         require(_idTracker.current() <= initAmount,"over limit");
         _mint(_to, _idTracker.current());
         _idTracker.increment();
-    
+        totalMint ++;
     }
 
     function setBaseURI(string memory baseURI_) external onlyOwner {

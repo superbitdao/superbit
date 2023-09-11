@@ -1411,7 +1411,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     uint256 public maxSeven;
     uint256 public maxEight;
     uint256 public maxNine;
-    uint256 public activateAccountUsedAmount;
+    uint256 public supAccountTotalUsedAmount;
     uint256 public userBuyMax;
     uint256[] public inviteRate;
     uint256[] public teamRate;
@@ -1446,10 +1446,11 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     mapping(address => address[]) public setAdminLevelNine_;
     mapping(address => bool) public isNotRegister;
     mapping(address => uint256) public activeInviteAmount;
-    mapping(address => uint256) public activeUsedAmount;
+    mapping(address => uint256) public supAccountUsedAmount;
     mapping(address => mapping(uint256 => address)) public userTeamReward;
     mapping(address => address) public userTeam;
     mapping(address =>mapping(address => bool)) public blackList;
+    mapping(uint256 => address) public nftType;
     event allInvite(
         address recommender1,
         address recommender2,
@@ -1518,8 +1519,8 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         maxSeven = 50;
         maxEight = 50;
         maxNine = 50;
-        activateAccountUsedAmount = 50;
-        userBuyMax = 2000000000000000000;
+        supAccountTotalUsedAmount = 50;
+        userBuyMax = 10000000000000000000000;
         registerId =1;
         receiveRemainingTeamRewards = msg.sender;
         svt = _svt;
@@ -1527,7 +1528,25 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         bigNode = _bigNode;
         smallNode = _smallNode;
         ogLock = _ogLock;
+        setNftType(2000,_smallNode );
+        setNftType(3000, _smallNode);
+        setNftType(4000, _smallNode);
+        setNftType(5000,_bigNode);
+        setNftType(6000,_bigNode);
+        setNftType(7000,_bigNode);
+        setNftType(8000,_bigNode);
+        setNftType(9000,_bigNode);
+        setNftType(10000,_supNode);
 	}
+    function setSvt(address _svt)public onlyOwner {
+        svt = _svt;
+    }
+    function setNftType(uint256 _num, address _nft) public onlyOwner{
+        nftType[_num] = _nft;
+    }
+    function deleteNftType(uint256 _num) public onlyOwner {
+        delete nftType[_num];
+    }
     function setSupNode(address _supNode) public onlyOwner{
         supNode = _supNode;
     }
@@ -1541,8 +1560,8 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     function setReceiveRemainingTeamRewards(address _addr) public onlyOwner{
         receiveRemainingTeamRewards = _addr;
     }
-    function setActivateAccountUsedAmount(uint256 _amount) public onlyOwner {
-        activateAccountUsedAmount = _amount;
+    function setSupAccountUsedAmount(uint256 _amount) public onlyOwner {
+        supAccountTotalUsedAmount = _amount;
     }
     function isValidNumber(uint256 number) private view returns (bool) {
         for (uint i = 0; i < validNumbers.length; i++) {
@@ -1995,13 +2014,19 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     {
         return IERC20(tokenAddress).transfer(msg.sender, tokens);
     }
-    function register(address _activationAddress) public nonReentrant whenNotPaused {
-        require(checkAddrForSupAccount(_activationAddress));
-        require(!checkAddrForAdminLevelFive(msg.sender) &&
-                !checkAddrForAdminLevelFour(msg.sender) &&
-                !checkAddrForAdminLevelThree(msg.sender) &&
-                !checkAddrForAdminLevelTwo(msg.sender));
-        require(activeUsedAmount[_activationAddress] <= activateAccountUsedAmount);
+    function register(address _supAccountAddress) public nonReentrant whenNotPaused {
+        require(checkAddrForSupAccount(_supAccountAddress));
+
+        require(
+            !checkAddrForAdminLevelNine(msg.sender) &&
+            !checkAddrForAdminLevelEight(msg.sender) &&
+            !checkAddrForAdminLevelSeven(msg.sender)&&
+            !checkAddrForAdminLevelSix(msg.sender) &&
+            !checkAddrForAdminLevelFive(msg.sender) &&
+            !checkAddrForAdminLevelFour(msg.sender) &&
+            !checkAddrForAdminLevelThree(msg.sender) &&
+            !checkAddrForAdminLevelTwo(msg.sender));
+        require(supAccountUsedAmount[_supAccountAddress] <= supAccountTotalUsedAmount);
         if(checkAddrForSupAccount(msg.sender) == true && isNotRegister[msg.sender] == false) {
             isNotRegister[msg.sender] = true;
             emit allRegister(registerId,recommender[msg.sender],msg.sender);
@@ -2009,14 +2034,14 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             return;
         }
         require(!isNotRegister[msg.sender] && !isRecommender[msg.sender] );
-        inviteFunc(msg.sender, _activationAddress);
-        userTeam[msg.sender] =_activationAddress;
+        inviteFunc(msg.sender, _supAccountAddress);
+        userTeam[msg.sender] = _supAccountAddress;
         for(uint256 i = 0 ; i < 5 ; i++){
-        userTeamReward[msg.sender][i] = userTeamReward[_activationAddress][i];
+        userTeamReward[msg.sender][i] = userTeamReward[_supAccountAddress][i];
         }
         isNotRegister[msg.sender] = true;
-        activeUsedAmount[_activationAddress] = activeUsedAmount[_activationAddress].add(1);
-        emit allRegister(registerId,_activationAddress,msg.sender);
+        supAccountUsedAmount[_supAccountAddress] = supAccountUsedAmount[_supAccountAddress].add(1);
+        emit allRegister(registerId,_supAccountAddress,msg.sender);
         registerId++;
 
     }
@@ -2027,21 +2052,18 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
 
        if(!checkAddrForSupAccount(msg.sender)){
             supAccount.add(msg.sender);
-        } if(fee.div(10**18) == 10000){
+        } 
+        if(nftType[fee.div(10**18)]  == supNode){
             ISupNode(supNode).mintSupNode(msg.sender);
-        }else if(fee.div(10**18) == 5000 ||
-                fee.div(10**18) == 6000  ||
-                fee.div(10**18) == 7000  ||
-                fee.div(10**18) == 9000  ||
-                fee.div(10**18) == 9000
-                ){
+        }else if(nftType[fee.div(10**18)]  == bigNode){
             IBigNode(bigNode).mintBigNode(msg.sender);
-        }else if(fee.div(10**18) == 2000 || fee.div(10**18) ==3000 || fee.div(10**18) == 4000 ) {
+        }else if( nftType[fee.div(10**18)]  == smallNode) {
             ISmallNode(smallNode).mintSmallNode(msg.sender);
         }
+        //不能影响认购
         address[invitationLevel] memory invite;
-        uint256 sbdAmount = fee.mul(salePrice.div(10 ** 9)).mul(2).div(10);
-        uint256 svtAmount = fee.mul(salePrice.div(10 ** 9)).mul(8).div(10);
+        uint256 sbdAmount = fee.mul(1000).div(salePrice).mul(2).div(10);
+        uint256 svtAmount = fee.mul(1000).div(salePrice).mul(8).div(10);
         uint256 salePrice_ = salePrice.div(1000);
         uint256 usdtAmount = fee;
         for(uint i = 1 ; i < invitationLevel; i++){
@@ -2129,7 +2151,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         return setAdminLevelNine_[_adminNine].length;
     }
     function receiveSbd(uint256 _usdtAmount) public view returns(uint256 ){
-        return _usdtAmount.mul(salePrice.div(1000));
+        return _usdtAmount.mul(1000).div(salePrice);
     }
     function receiveSvt(uint256 _usdtAmount) public view returns(uint256 ){
         return receiveSbd(_usdtAmount).mul(8).div(10);
