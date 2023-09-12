@@ -2271,9 +2271,14 @@ contract SupNode is ERC721,Ownable,ReentrancyGuard{
     constructor() ERC721("SupNode", "SupNode"){
     baseURI = "asd";
     initAmount = 100;
-    totalMint = 1;
     
-}
+}   function getStatus()external view returns(bool){
+        if(initAmount == totalMint){
+            return false;
+        }
+        return true;
+    }
+
     //onlyOwner
     function setInitAmount(uint256 _amount) public onlyOwner {
         initAmount = _amount;

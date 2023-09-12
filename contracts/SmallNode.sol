@@ -2272,8 +2272,13 @@ contract SmallNode is ERC721,Ownable,ReentrancyGuard{
     constructor() ERC721("SmallNode", "SmallNode"){
     baseURI = "https://.ipfs.nftstorage.link/";
     initAmount = 900;
-    totalMint = 1;
 }
+   function getStatus()external view returns(bool){
+        if(initAmount == totalMint){
+            return false;
+        }
+        return true;
+    }
     //onlyOwner
       function setInitAmount(uint256 _amount) public onlyOwner {
         initAmount = _amount;

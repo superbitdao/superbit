@@ -13,4 +13,7 @@ contract S {
       function receiveSbd1(uint256 _usdtAmount) public view returns(uint256 ){
         return _usdtAmount/salePrice/1000;
     }
+    function getaddr() public view returns(address){
+        return address(0);
+    }
 }

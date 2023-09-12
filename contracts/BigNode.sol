@@ -2271,8 +2271,13 @@ contract BigNode is ERC721,Ownable,ReentrancyGuard{
     constructor() ERC721("BigNode", "BigNode"){
     baseURI = "https://.ipfs.nftstorage.link/";
     initAmount = 300;
-    totalMint = 1;
 }
+    function getStatus()external view returns(bool){
+        if(initAmount == totalMint){
+            return false;
+        }
+        return true;
+    }
     //onlyOwner
     function setInitAmount(uint256 _amount) public onlyOwner {
         initAmount = _amount;

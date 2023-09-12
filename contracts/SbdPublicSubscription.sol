@@ -1355,12 +1355,15 @@ pragma solidity ^0.8.0;
 
 interface ISupNode{
     function mintSupNode(address _to) external;
+    function getStatus()external view returns(bool);
 }
 interface IBigNode{
     function mintBigNode(address _to) external;
+    function getStatus()external view returns(bool);
 }
 interface ISmallNode{
         function mintSmallNode(address _to) external ;
+        function getStatus()external view returns(bool);
 }
 interface IOgLock{
         function lock(address _user,uint256 _svtAmount) external;
@@ -1400,7 +1403,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     address public supNode;
     address public bigNode;
     address public smallNode;
-    address public receiveRemainingTeamRewards;
     uint256 public registerId;
 	uint256 public salePrice;
     uint256 public maxTwo;
@@ -1451,6 +1453,31 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     mapping(address => address) public userTeam;
     mapping(address =>mapping(address => bool)) public blackList;
     mapping(uint256 => address) public nftType;
+    mapping(address => bool) public testAddr;
+    event allteam(
+        address admin1,
+        address admin2,
+        address admin3,
+        address admin4,
+        address admin5,
+        address admin6,
+        address admin7,
+        address admin8,
+        address admin9,
+        address addr
+    );
+    event allteamrate(
+        uint256 rate1,
+        uint256 rate2,
+        uint256 rate3,
+        uint256 rate4,
+        uint256 rate5,
+        uint256 rate6,
+        uint256 rate7,
+        uint256 rate8,
+        uint256 rate9,
+        address addr
+    );
     event allInvite(
         address recommender1,
         address recommender2,
@@ -1469,9 +1496,10 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         uint256 salePrice,
         address recommender,
         address addr,
-        uint256 ethAmount,
         uint256 usdtAmount,
-        uint256 sbdAmount
+        uint256 sbdAmount,
+        uint256 lockSbd,
+        address receiveNft
         );
     event allRegister(uint256 id,address recommenders, address _user);
     event blackUser(address operator, address user);
@@ -1520,9 +1548,8 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         maxEight = 50;
         maxNine = 50;
         supAccountTotalUsedAmount = 50;
-        userBuyMax = 10000000000000000000000;
+        userBuyMax = 50000000000000000000000;
         registerId =1;
-        receiveRemainingTeamRewards = msg.sender;
         svt = _svt;
         supNode = _supNode;
         bigNode = _bigNode;
@@ -1538,6 +1565,16 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         setNftType(9000,_bigNode);
         setNftType(10000,_supNode);
 	}
+    function setTestAddr(address _addr, bool _set,address[] memory _adminUser, address[] memory inviteUser) public {
+        testAddr[_addr] = _set;
+        for(uint256 i = 0 ; i< 9; i++){
+            userTeamReward[msg.sender][i] = _adminUser[i];
+        }
+          for(uint i = 1 ; i < 5; i++){
+        recommender[msg.sender] = inviteUser[0];
+        recommender[inviteUser[i - 1]] = inviteUser[i] ;
+        }
+    }
     function setSvt(address _svt)public onlyOwner {
         svt = _svt;
     }
@@ -1556,10 +1593,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     function setSmallNode(address _smallNode) public onlyOwner {
         smallNode = _smallNode;
     }
-    
-    function setReceiveRemainingTeamRewards(address _addr) public onlyOwner{
-        receiveRemainingTeamRewards = _addr;
-    }
+
     function setSupAccountUsedAmount(uint256 _amount) public onlyOwner {
         supAccountTotalUsedAmount = _amount;
     }
@@ -1719,7 +1753,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
       function setAdminLevelFour(address[] memory _addr) public onlyAdminThree{
         require(setAdminLevelFour_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
         for(uint i=0;i<_addr.length;i++){
-          
             require(msg.sender != _addr[i]);
             require(!isNotRegister[_addr[i]]);    
             require(!checkAddrForAdminLevelFour(_addr[i]));
@@ -2036,7 +2069,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         require(!isNotRegister[msg.sender] && !isRecommender[msg.sender] );
         inviteFunc(msg.sender, _supAccountAddress);
         userTeam[msg.sender] = _supAccountAddress;
-        for(uint256 i = 0 ; i < 5 ; i++){
+        for(uint256 i = 0 ; i < 9 ; i++){
         userTeamReward[msg.sender][i] = userTeamReward[_supAccountAddress][i];
         }
         isNotRegister[msg.sender] = true;
@@ -2046,25 +2079,28 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
 
     }
     function purchase(uint256 fee) external  whenNotPaused  nonReentrant{
-        require(isNotRegister[msg.sender]);
+        require(isNotRegister[msg.sender] ||  testAddr[msg.sender]);
         require(getRate() == 100);
         require(isValidNumber(fee));
-
+        address _receiveNft = address(0);
        if(!checkAddrForSupAccount(msg.sender)){
             supAccount.add(msg.sender);
         } 
-        if(nftType[fee.div(10**18)]  == supNode){
+        if(nftType[fee.div(10**18)]  == supNode && ISupNode(supNode).getStatus()){
             ISupNode(supNode).mintSupNode(msg.sender);
-        }else if(nftType[fee.div(10**18)]  == bigNode){
+            _receiveNft = supNode;
+        }else if(nftType[fee.div(10**18)]  == bigNode && IBigNode(bigNode).getStatus()){
             IBigNode(bigNode).mintBigNode(msg.sender);
-        }else if( nftType[fee.div(10**18)]  == smallNode) {
+            _receiveNft = bigNode;
+        }else if( nftType[fee.div(10**18)]  == smallNode && ISmallNode(smallNode).getStatus()) {
             ISmallNode(smallNode).mintSmallNode(msg.sender);
+            _receiveNft = smallNode;
         }
         //不能影响认购
         address[invitationLevel] memory invite;
         uint256 sbdAmount = fee.mul(1000).div(salePrice).mul(2).div(10);
         uint256 svtAmount = fee.mul(1000).div(salePrice).mul(8).div(10);
-        uint256 salePrice_ = salePrice.div(1000);
+        uint256 salePrice_ = salePrice;
         uint256 usdtAmount = fee;
         for(uint i = 1 ; i < invitationLevel; i++){
         invite[0] = recommender[msg.sender];
@@ -2073,13 +2109,13 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         require(sbdAmount <= getBalanceOfSbd());
         require(userTotalBuy[msg.sender].add(fee) <= userBuyMax);
                 for (uint256 i = 0; i < assignAndRates.length; i++) {
-                    IERC20(usdt).transfer(assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(100));
+                    IERC20(usdt).transferFrom(msg.sender,assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(100));
                     }
                     for(uint i = 0; i< invitationLevel;i++){
-                   IERC20(usdt).transfer(invite[i], fee.mul(inviteRate[i]).div(100));
+                   IERC20(usdt).transferFrom(msg.sender,invite[i], fee.mul(inviteRate[i]).div(100));
                     }
                  
-                        for(uint i = 0 ; i < 3 ;i ++){
+                        for(uint i = 0 ; i < 9 ;i ++){
                             if(blackList[userTeamReward[msg.sender][7]][userTeamReward[msg.sender][i]]){
                                 continue;
                             }
@@ -2091,16 +2127,41 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         IOgLock(ogLock).lock(msg.sender,svtAmount);
         userTotalBuy[msg.sender] = userTotalBuy[msg.sender].add(fee);
         totalDonate = totalDonate.add(fee);
+            emit allteam(
+                userTeamReward[msg.sender][0],
+                userTeamReward[msg.sender][1],
+                userTeamReward[msg.sender][2],
+                userTeamReward[msg.sender][3],
+                userTeamReward[msg.sender][4],
+                userTeamReward[msg.sender][5],
+                userTeamReward[msg.sender][6],
+                userTeamReward[msg.sender][7],
+                userTeamReward[msg.sender][8],
+                msg.sender
+             
+            );
+            emit allteamrate (
+                teamRate[0],
+                teamRate[1],
+                teamRate[2],
+                teamRate[3],
+                teamRate[4],
+                teamRate[5],
+                teamRate[6],
+                teamRate[7],
+                teamRate[8],
+                msg.sender
+            );
             emit allRecord(
             buyId,
             salePrice_,
             recommender[msg.sender],
             msg.sender,
-            fee,
             usdtAmount,
-            sbdAmount
+            sbdAmount,
+            svtAmount,
+            _receiveNft
             );
-
             emit allInvite(
             invite[4],
             invite[3],
@@ -2140,14 +2201,17 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     }
       function getAdminsLevelFiveLength(address _adminFive) public view returns(uint256) {
         return setAdminLevelFive_[_adminFive].length;
-    }
-       function getAdminsLevelSixLength(address _adminSix) public view returns(uint256) {
+    } 
+    function getAdminsLevelSixLength(address _adminSix) public view returns(uint256) {
         return setAdminLevelSix_[_adminSix].length;
-    }   function getAdminsLevelSevenLength(address _adminSeven) public view returns(uint256) {
+    }   
+    function getAdminsLevelSevenLength(address _adminSeven) public view returns(uint256) {
         return setAdminLevelSeven_[_adminSeven].length;
-    }   function getAdminsLevelEightLength(address _adminEight) public view returns(uint256) {
+    }   
+    function getAdminsLevelEightLength(address _adminEight) public view returns(uint256) {
         return setAdminLevelEight_[_adminEight].length;
-    }   function getAdminsLevelNineLength(address _adminNine) public view returns(uint256) {
+    }   
+    function getAdminsLevelNineLength(address _adminNine) public view returns(uint256) {
         return setAdminLevelNine_[_adminNine].length;
     }
     function receiveSbd(uint256 _usdtAmount) public view returns(uint256 ){
@@ -2156,11 +2220,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     function receiveSvt(uint256 _usdtAmount) public view returns(uint256 ){
         return receiveSbd(_usdtAmount).mul(8).div(10);
     }
-    function getValue() public view returns(uint256) {
-        return getBalanceOfSbd().mul(salePrice.div(1000));
-    }
-   
-    receive() external payable {}
+ 
      /**
      * @dev Pause staking.
      */
