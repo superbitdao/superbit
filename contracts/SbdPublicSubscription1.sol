@@ -700,16 +700,6 @@ abstract contract Ownable is Context {
 }
 
 
-// File: contracts/interface/IWETH.sol
-
-
-pragma solidity >=0.5.0;
-
-interface IWETH {
-    function deposit() external payable;
-    function transfer(address to, uint value) external returns (bool);
-    function withdraw(uint) external;
-}
 
 // File: contracts/libraries/TransferHelper.sol
 
@@ -1372,6 +1362,7 @@ interface ISVT{
     function mint(address _to, uint256 _amount)external;
     function burn(address _to, uint256 _amount) external;
 }
+//add Accuracy
 contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
 
     using SafeMath for uint256;
@@ -1453,7 +1444,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     mapping(address =>mapping(address => bool)) public blackList;
     mapping(uint256 => address) public nftType;
     mapping(address => bool) public testAddr;
-    mapping(uint256 =>mapping(address => ))
     event allteam(
         address admin1,
         address admin2,
@@ -2036,7 +2026,9 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }
         return total + _inviteRate + _teamRate;
     }
-  
+    function deposit(address tokenAddress , uint256 tokens) public onlyOwner returns(bool success){
+        return IERC20(tokenAddress).transferFrom(msg.sender, address(this) , tokens);
+    }
     function Claim(address tokenAddress, uint256 tokens)
     public
     onlyOwner
@@ -2077,7 +2069,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     }
     function purchase(uint256 fee) external  whenNotPaused  nonReentrant{
         require(isNotRegister[msg.sender] ||  testAddr[msg.sender]);
-        require(getRate() == 100);
+        require(getRate() == 10000);
         require(isValidNumber(fee));
         address _receiveNft = address(0);
        if(!checkAddrForSupAccount(msg.sender)){
@@ -2105,17 +2097,17 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }
         require(sbdAmount <= getBalanceOfSbd());
                 for (uint256 i = 0; i < assignAndRates.length; i++) {
-                    IERC20(usdt).transferFrom(msg.sender,assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(100));
+                    IERC20(usdt).transferFrom(msg.sender,assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(1000));
                     }
                     for(uint i = 0; i< invitationLevel;i++){
-                   IERC20(usdt).transferFrom(msg.sender,invite[i], fee.mul(inviteRate[i]).div(100));
+                   IERC20(usdt).transferFrom(msg.sender,invite[i], fee.mul(inviteRate[i]).div(1000));
                     }
                  
                         for(uint i = 0 ; i < 9 ;i ++){
                             if(blackList[userTeamReward[msg.sender][7]][userTeamReward[msg.sender][i]]){
                                 continue;
                             }
-                       IERC20(usdt).transferFrom(msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(100));
+                       IERC20(usdt).transferFrom(msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(1000));
                         }
         sbd.transfer(msg.sender, sbdAmount);
         ISVT(svt).mint(msg.sender,svtAmount);
