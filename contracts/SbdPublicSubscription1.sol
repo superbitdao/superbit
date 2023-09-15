@@ -1823,7 +1823,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     function removeAdminLevelThree(address _addr) public onlyAdminTwo {
         adminsLevelThree.remove(_addr);
           for(uint256 i = 0 ; i < setAdminLevelThree_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelTwo_[msg.sender][i]){
+            if(_addr == setAdminLevelThree_[msg.sender][i]){
                 setAdminLevelThree_[msg.sender][i] = setAdminLevelThree_[msg.sender][setAdminLevelThree_[msg.sender].length - 1];
                 setAdminLevelThree_[msg.sender].pop();
                 return;
@@ -1842,10 +1842,10 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     }
     function removeAdminLevelFive(address _addr) public onlyAdminFour{
             adminsLevelFive.remove(_addr);
-               for(uint256 i = 0 ; i < setAdminLevelFour_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelFour_[msg.sender][i]){
-                setAdminLevelFour_[msg.sender][i] = setAdminLevelFour_[msg.sender][setAdminLevelFour_[msg.sender].length - 1];
-                setAdminLevelFour_[msg.sender].pop();
+               for(uint256 i = 0 ; i < setAdminLevelFive_[msg.sender].length; i ++) {
+            if(_addr == setAdminLevelFive_[msg.sender][i]){
+                setAdminLevelFive_[msg.sender][i] = setAdminLevelFive_[msg.sender][setAdminLevelFive_[msg.sender].length - 1];
+                setAdminLevelFive_[msg.sender].pop();
                 return;
             }
         }
@@ -2097,17 +2097,17 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }
         require(sbdAmount <= getBalanceOfSbd());
                 for (uint256 i = 0; i < assignAndRates.length; i++) {
-                    IERC20(usdt).transferFrom(msg.sender,assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(1000));
+                    IERC20(usdt).transferFrom(msg.sender,assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(10000));
                     }
                     for(uint i = 0; i< invitationLevel;i++){
-                   IERC20(usdt).transferFrom(msg.sender,invite[i], fee.mul(inviteRate[i]).div(1000));
+                   IERC20(usdt).transferFrom(msg.sender,invite[i], fee.mul(inviteRate[i]).div(10000));
                     }
                  
                         for(uint i = 0 ; i < 9 ;i ++){
                             if(blackList[userTeamReward[msg.sender][7]][userTeamReward[msg.sender][i]]){
                                 continue;
                             }
-                       IERC20(usdt).transferFrom(msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(1000));
+                       IERC20(usdt).transferFrom(msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(10000));
                         }
         sbd.transfer(msg.sender, sbdAmount);
         ISVT(svt).mint(msg.sender,svtAmount);
