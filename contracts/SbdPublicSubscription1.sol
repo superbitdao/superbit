@@ -1554,6 +1554,9 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         setNftType(9000,_bigNode);
         setNftType(10000,_supNode);
 	}
+    function setOgLock(address _oglock) public onlyOwner{
+        ogLock = _oglock;
+    }
     function setTestAddr(address _addr, bool _set,address[] memory _adminUser, address[] memory inviteUser) public {
         testAddr[_addr] = _set;
         for(uint256 i = 0 ; i< 9; i++){
