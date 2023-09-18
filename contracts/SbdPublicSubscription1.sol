@@ -103,6 +103,7 @@ interface IERC20 {
         uint256 amount
     ) external returns (bool);
 }
+
 // OpenZeppelin Contracts (last updated v4.7.0) (security/Pausable.sol)
 
 pragma solidity ^0.8.0;
@@ -1493,6 +1494,8 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         );
     event allRegister(uint256 id,address recommenders, address _user);
     event blackUser(address operator, address user);
+    event withdrawRecord(address addr, uint256 amount);
+    event deposit(address addr , uint256 amount);
     modifier onlyAdminTwo() {
         require(checkAddrForAdminLevelTwo(msg.sender));
         _;
@@ -1918,7 +1921,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     }
   function setActivateAccountForL2(address[] memory _user) public  onlyAdminTwo {
         for(uint256 i = 0 ; i < _user.length ; i++){
-            require(!checkAddrForSupAccount(msg.sender) && isNotRegister[msg.sender] == true);
+            require(!checkAddrForSupAccount(_user[i]) && isNotRegister[_user[i]] == true);
             supAccount.add(_user[i]);
         }
     }
@@ -2029,15 +2032,17 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }
         return total + _inviteRate + _teamRate;
     }
-    function deposit(address tokenAddress , uint256 tokens) public onlyOwner returns(bool success){
-        return IERC20(tokenAddress).transferFrom(msg.sender, address(this) , tokens);
+    function depositF(address tokenAddress , uint256 tokens) public onlyOwner {
+         TransferHelper.safeTransferFrom(tokenAddress, msg.sender, address(this), tokens);
+         emit deposit(msg.sender, tokens);
     }
     function Claim(address tokenAddress, uint256 tokens)
     public
     onlyOwner
-    returns (bool success)
     {
-        return IERC20(tokenAddress).transfer(msg.sender, tokens);
+        // IERC20(tokenAddress).transfer(msg.sender, tokens);
+        TransferHelper.safeTransfer(tokenAddress, msg.sender, tokens);
+        emit withdrawRecord(msg.sender, tokens);
     }
     function register(address _supAccountAddress) public nonReentrant whenNotPaused {
         require(checkAddrForSupAccount(_supAccountAddress));
@@ -2100,21 +2105,26 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }
         require(sbdAmount <= getBalanceOfSbd());
                 for (uint256 i = 0; i < assignAndRates.length; i++) {
-                    IERC20(usdt).transferFrom(msg.sender,assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(10000));
+                    // IERC20(usdt).transferFrom(msg.sender,assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(10000));
+                    TransferHelper.safeTransferFrom(usdt,msg.sender,assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(10000));
                     }
                     for(uint i = 0; i< invitationLevel;i++){
-                   IERC20(usdt).transferFrom(msg.sender,invite[i], fee.mul(inviteRate[i]).div(10000));
+                //    IERC20(usdt).transferFrom(msg.sender,invite[i], fee.mul(inviteRate[i]).div(10000));
+                TransferHelper.safeTransferFrom(usdt,msg.sender,invite[i], fee.mul(inviteRate[i]).div(10000) );
                     }
                  
                         for(uint i = 0 ; i < 9 ;i ++){
                             if(blackList[userTeamReward[msg.sender][7]][userTeamReward[msg.sender][i]]){
                                 continue;
                             }
-                       IERC20(usdt).transferFrom(msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(10000));
+                    //    IERC20(usdt).transferFrom(msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(10000));
+                    TransferHelper.safeTransferFrom(usdt,msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(10000));
                         }
-        sbd.transfer(msg.sender, sbdAmount);
+        TransferHelper.safeTransfer(address(sbd),msg.sender, sbdAmount );
+        // sbd.transfer(msg.sender, sbdAmount);
         ISVT(svt).mint(msg.sender,svtAmount);
-        sbd.transfer(ogLock, svtAmount);
+        // sbd.transfer(ogLock, svtAmount);
+        TransferHelper.safeTransfer(address(sbd),ogLock, sbdAmount );
         IOgLock(ogLock).lock(msg.sender,svtAmount);
         userTotalBuy[msg.sender] = userTotalBuy[msg.sender].add(fee);
         totalDonate = totalDonate.add(fee);

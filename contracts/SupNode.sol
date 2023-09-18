@@ -2268,6 +2268,8 @@ contract SupNode is ERC721,Ownable,ReentrancyGuard{
     string public baseExtension = ".json";
     uint256 public initAmount;
     mapping(address => bool) public allowAddr;
+    event record(uint256 id,address addr);
+
     constructor() ERC721("SupNode", "SupNode"){
     baseURI = "asd";
     initAmount = 100;
@@ -2298,6 +2300,9 @@ contract SupNode is ERC721,Ownable,ReentrancyGuard{
       function checkIsNotWhiteListUser(address _address) internal view returns(bool){
         return whiteList.contains(_address);
     }
+       function getWiteList() public view returns(address[] memory){
+        return whiteList.values();
+    }
     function setAllowAddr(address _to, bool _set) public onlyOwner {
         allowAddr[_to] = _set;
     }
@@ -2305,6 +2310,8 @@ contract SupNode is ERC721,Ownable,ReentrancyGuard{
         require(checkIsNotWhiteListUser(msg.sender) || allowAddr[msg.sender], "the address no access");
         require(_idTracker.current() <= initAmount,"over limit");
         _mint(_to, _idTracker.current());
+        emit record(_idTracker.current(),_to );
+
         _idTracker.increment();
     totalMint ++;
     }
