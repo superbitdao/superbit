@@ -2268,12 +2268,14 @@ contract SupNode is ERC721,Ownable,ReentrancyGuard{
     string public baseExtension = ".json";
     uint256 public initAmount;
     mapping(address => bool) public allowAddr;
+    mapping(address => bool) public Casted;
+
     event record(uint256 id,address addr);
 
     constructor() ERC721("SupNode", "SupNode"){
-    baseURI = "asd";
+    baseURI = "https://bafybeihewbk2b3czyurbv5anzh6ylqean7qikxhphzaxvckvquswvg7t4q.ipfs.nftstorage.link/";
     initAmount = 100;
-    
+     
 }   function getStatus()external view returns(bool){
         if(initAmount == totalMint){
             return false;
@@ -2307,15 +2309,23 @@ contract SupNode is ERC721,Ownable,ReentrancyGuard{
         allowAddr[_to] = _set;
     }
     function mintSupNode(address _to) external {
-        require(checkIsNotWhiteListUser(msg.sender) || allowAddr[msg.sender], "the address no access");
+        require( allowAddr[msg.sender], "the address no access");
         require(_idTracker.current() <= initAmount,"over limit");
         _mint(_to, _idTracker.current());
         emit record(_idTracker.current(),_to );
-
         _idTracker.increment();
-    totalMint ++;
+        totalMint ++;
     }
+      function mintForWhiteList() public {
+        require(checkIsNotWhiteListUser(msg.sender) && !Casted[msg.sender],"the white User only mint one");
+        require(_idTracker.current() <= initAmount,"over limit");
 
+        Casted[msg.sender] = true;
+        _mint(msg.sender, _idTracker.current());
+        emit record(_idTracker.current(),msg.sender );
+        _idTracker.increment();
+        totalMint ++;
+    }
     function setBaseURI(string memory baseURI_) external onlyOwner {
         baseURI = baseURI_;
     }
