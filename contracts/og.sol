@@ -1927,15 +1927,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             supAccount.add(_user[i]);
             inviteFunc(_user[i],msg.sender);
             activeInviteAmount[msg.sender] = activeInviteAmount[msg.sender].add(1);
-            // userTeamReward[_user[i]][0] = msg.sender; //9
-            // userTeamReward[_user[i]][1] = recommender[msg.sender];//8
-            // userTeamReward[_user[i]][2] = recommender[recommender[msg.sender]];//7
-            // userTeamReward[_user[i]][3] = recommender[recommender[recommender[msg.sender]]];//6
-            // userTeamReward[_user[i]][4] = recommender[recommender[recommender[recommender[msg.sender]]]];//5
-            // userTeamReward[_user[i]][5] = recommender[recommender[recommender[recommender[recommender[msg.sender]]]]];//4
-            // userTeamReward[_user[i]][6] = recommender[recommender[recommender[recommender[recommender[recommender[msg.sender]]]]]];//3
-            // userTeamReward[_user[i]][7] = recommender[recommender[recommender[recommender[recommender[recommender[recommender[msg.sender]]]]]]];//2
-            // userTeamReward[_user[i]][8] = recommender[recommender[recommender[recommender[recommender[recommender[recommender[recommender[msg.sender]]]]]]]];//1
             for(uint256 j = 1 ; j < 9 ; j ++){
                 userTeamReward[_user[i]][0] = msg.sender; 
                 userTeamReward[_user[i]][j] = recommender[userTeamReward[_user[i]][j - 1 ]];
@@ -2034,7 +2025,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     public
     onlyOwner
     {
-        // IERC20(tokenAddress).transfer(msg.sender, tokens);
         TransferHelper.safeTransfer(tokenAddress, msg.sender, tokens);
         emit withdrawRecord(msg.sender, tokens);
     }
@@ -2087,7 +2077,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             ISmallNode(smallNode).mintSmallNode(msg.sender);
             _receiveNft = smallNode;
         }
-        //不能影响认购
         address[invitationLevel] memory invite;
         uint256 sbdAmount = fee.mul(1000).div(salePrice).mul(2).div(10);
         uint256 svtAmount = fee.mul(1000).div(salePrice).mul(8).div(10);
@@ -2099,11 +2088,9 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }
         require(sbdAmount <= getBalanceOfSbd());
                 for (uint256 i = 0; i < assignAndRates.length; i++) {
-                    // IERC20(usdt).transferFrom(msg.sender,assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(10000));
                     TransferHelper.safeTransferFrom(usdt,msg.sender,assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(10000));
                     }
                     for(uint i = 0; i< invitationLevel;i++){
-                //    IERC20(usdt).transferFrom(msg.sender,invite[i], fee.mul(inviteRate[i]).div(10000));
                 TransferHelper.safeTransferFrom(usdt,msg.sender,invite[i], fee.mul(inviteRate[i]).div(10000) );
                     }
                  
@@ -2111,14 +2098,11 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
                             if(blackList[userTeamReward[msg.sender][7]][userTeamReward[msg.sender][i]]){
                                 continue;
                             }
-                    //    IERC20(usdt).transferFrom(msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(10000));
                     TransferHelper.safeTransferFrom(usdt,msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(10000));
                         }
-        TransferHelper.safeTransfer(address(sbd),msg.sender, sbdAmount );
-        // sbd.transfer(msg.sender, sbdAmount);
+        TransferHelper.safeTransfer(address(sbd),msg.sender, sbdAmount);
         ISVT(svt).mint(msg.sender,svtAmount);
-        // sbd.transfer(ogLock, svtAmount);
-        TransferHelper.safeTransfer(address(sbd),ogLock, sbdAmount );
+        TransferHelper.safeTransfer(address(sbd),ogLock, svtAmount);
         IOgLock(ogLock).lock(msg.sender,svtAmount);
         userTotalBuy[msg.sender] = userTotalBuy[msg.sender].add(fee);
         totalDonate = totalDonate.add(fee);
