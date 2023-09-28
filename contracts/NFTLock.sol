@@ -24,8 +24,10 @@ contract NFTLock is Ownable{
     address public supNft;
     address public bigNft;
     address public smallNft;
+    uint256 public totalPower;
     mapping(address  => uint256 ) public power;
     mapping(address => lockInfo[]) public userLockInfos;
+    
     constructor(address _srt,address _supNft, address _bigNft, address _smallNft) {
         power[_supNft] = 10;
         power[_bigNft] = 3;
@@ -61,6 +63,7 @@ contract NFTLock is Ownable{
                 lockTimeBlock:lockTimeBlock
             });
             userLockInfos[msg.sender].push(_info);
+            totalPower = totalPower.add(power[smallNft]);
         }else if(_nft == 2) {
             require(IERC721(bigNft).balanceOf(msg.sender) != 0,"You do not have a small node NFT");
             IERC721(bigNft).transferFrom(msg.sender, address(this),_tokenId);
@@ -74,6 +77,8 @@ contract NFTLock is Ownable{
                 lockTimeBlock:lockTimeBlock
             });
             userLockInfos[msg.sender].push(_info);
+            totalPower = totalPower.add(power[bigNft]);
+
         }else if(_nft ==3){
             require(IERC721(supNft).balanceOf(msg.sender) != 0,"You do not have a small node NFT");
             IERC721(supNft).transferFrom(msg.sender, address(this),_tokenId);
@@ -87,6 +92,8 @@ contract NFTLock is Ownable{
                 lockTimeBlock:lockTimeBlock
             });
             userLockInfos[msg.sender].push(_info);
+            totalPower = totalPower.add(power[supNft]);
+
         }else {
             revert("input error");
         }
@@ -103,7 +110,7 @@ contract NFTLock is Ownable{
             if(userLockInfos[_user][i].lockTimeBlock == block.number){
                 continue;
             }
-            total = total.add(getOneBlockReward().mul(block.number.sub(userLockInfos[msg.sender][i].startTimeBlock)).mul(userLockInfos[msg.sender][i].power));
+            total = total.add(getOneBlockReward().mul(block.number.sub(userLockInfos[msg.sender][i].startTimeBlock)).mul(userLockInfos[msg.sender][i].power.div(totalPower)));
         }
         return total;
     }
@@ -127,6 +134,7 @@ contract NFTLock is Ownable{
                 require(userLockInfos[msg.sender][i].user == msg.sender&& smallNft == userLockInfos[msg.sender][i].nft);
             } 
             IERC721(smallNft).safeTransferFrom(address(this),msg.sender,_tokenId);
+            totalPower = totalPower.sub(power[smallNft]);
 
 
         }else if(_nftClass == 2) {
@@ -135,12 +143,16 @@ contract NFTLock is Ownable{
                 require(userLockInfos[msg.sender][i].user == msg.sender && bigNft == userLockInfos[msg.sender][i].nft);
             }
             IERC721(bigNft).safeTransferFrom(address(this),msg.sender,_tokenId);
-        }else if(_nftClass == 3){
+            totalPower = totalPower.sub(power[bigNft]);
+
+        }else if(_nftClass == 3){ 
      require(IERC721(supNft).balanceOf(address(this)) != 0 ," do not have a small node NFT");
             for(uint256 i =0 ; i< userLockInfos[msg.sender].length; i++){
                 require(userLockInfos[msg.sender][i].user == msg.sender && supNft == userLockInfos[msg.sender][i].nft);
             }
             IERC721(supNft).safeTransferFrom(address(this),msg.sender,_tokenId);
+            totalPower = totalPower.sub(power[supNft]);
+
         }
     }
     
