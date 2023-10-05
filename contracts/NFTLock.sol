@@ -17,16 +17,19 @@ contract NFTLock is Ownable{
         uint256 startTimeBlock;
         uint256 lockTimeBlock;
     }
-    uint256 public reward;
-    uint256 public rewardTime;
+    uint256[] public reward;
+    uint256[] public rewardTime;
+    uint256[] public startRewardTime;
     uint256 public blockTime;
     address public srt;
     address public supNft;
     address public bigNft;
     address public smallNft;
     uint256 public totalPower;
+    mapping(address => mapping(uint256=>uint256)) public userRewardTime;
     mapping(address  => uint256 ) public power;
     mapping(address => lockInfo[]) public userLockInfos;
+    mapping(address => uint256 ) public userTotalLock;
     
     constructor(address _srt,address _supNft, address _bigNft, address _smallNft) {
         power[_supNft] = 10;
@@ -45,11 +48,16 @@ contract NFTLock is Ownable{
     }
     function deposit(uint256 _amount,uint256 _rewardTime) public onlyOwner {
         IERC20(srt).transferFrom (msg.sender,address(this),_amount);
-        reward = _amount;
-        rewardTime = _rewardTime;
+        reward .push(_amount) ;
+        rewardTime.push(_rewardTime) ;
+        startRewardTime.push(block.number);
     }
     function lockNft(uint256 _nft,uint256 _tokenId,uint256 _lockTime) public {
         uint256 lockTimeBlock = _lockTime.div(45).div(10);
+        if(userRewardTime[msg.sender][userTotalLock[msg.sender]] == 0) {
+            userRewardTime[msg.sender][userTotalLock[msg.sender]]= block.number;
+        }
+
         if(_nft == 1) {
             require(IERC721(smallNft).balanceOf(msg.sender) != 0,"You do not have a small node NFT");
             IERC721(smallNft).transferFrom(msg.sender, address(this),_tokenId);
@@ -94,40 +102,55 @@ contract NFTLock is Ownable{
             userLockInfos[msg.sender].push(_info);
             totalPower = totalPower.add(power[supNft]);
 
+
         }else {
             revert("input error");
         }
+        userTotalLock[msg.sender] = userTotalLock[msg.sender].add(1);
+
     }
     function getUserLockInfosLength(address _user) public view returns(uint256 ){
         return userLockInfos[_user].length;
     }
-    function getOneBlockReward() public view returns(uint256) {
-        return reward.div(rewardTime.mul(45).div(10));
+    function getOneBlockReward(uint256 _rewardId) public view returns(uint256) {
+        return reward[_rewardId].div(rewardTime[_rewardId].mul(45).div(10));
     }
     function getUserCanClaim(address _user) public view returns(uint256){
         uint256 total = 0;
+        
         for(uint256 i =0 ; i< userLockInfos[_user].length ;i++){
             if(userLockInfos[_user][i].lockTimeBlock == block.number){
                 continue;
             }
-            total = total.add(getOneBlockReward().mul(block.number.sub(userLockInfos[msg.sender][i].startTimeBlock)).mul(userLockInfos[msg.sender][i].power.div(totalPower)));
+            for(uint256 j = 0 ; j <rewardTime.length ;j++ ){
+            total = total.add(block.number.sub(userRewardTime[_user][i]).mul(getOneBlockReward(j).mul(block.number.sub(userLockInfos[_user][i].startTimeBlock)).mul(userLockInfos[_user][i].power.div(totalPower))));
+
+            }
         }
         return total;
     }
     function ClaimSrt(uint256 _amount) public {
         require(getUserCanClaim(msg.sender) >= _amount && getContractSrtBalance()>= _amount);
         uint256 total = 0;
+        address _user = msg.sender;
         for(uint256 i = 0 ; i < userLockInfos[msg.sender].length ;i ++){
               if(userLockInfos[msg.sender][i].lockTimeBlock == block.number){
                 continue;
             }
-            total = total.add(getOneBlockReward().mul(block.number.sub(userLockInfos[msg.sender][i].startTimeBlock)).mul(userLockInfos[msg.sender][i].power));
-            userLockInfos[msg.sender][i].startTimeBlock = block.number;
-        }
-        
+            for(uint256 j = 0; j < rewardTime.length; j++){
+            total = total.add(block.number.sub(userRewardTime[_user][i]).mul(getOneBlockReward(j).mul(block.number.sub(userLockInfos[_user][i].startTimeBlock)).mul(userLockInfos[_user][i].power.div(totalPower))));
+
+            }
+        userLockInfos[msg.sender][i].startTimeBlock = block.number;
+        userRewardTime[msg.sender][i] = block.number;
+
+            if(total == _amount) {
         IERC20(srt).transfer(msg.sender, _amount);
+        }
+        }
+      
     }
-    function ClaimNft(uint256 _nftClass , uint256 _tokenId ) public {
+    function withdrawNft(uint256 _nftClass , uint256 _tokenId ) public {
         if(_nftClass == 1){
             require(IERC721(smallNft).balanceOf(address(this)) != 0 ," do not have a small node NFT");
             for(uint256 i =0 ; i< userLockInfos[msg.sender].length; i++){
