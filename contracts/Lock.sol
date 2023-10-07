@@ -20,10 +20,10 @@ contract Lock  is Ownable{
 
     }
     IERC20 sbd;
-    uint256 public startRewardTime;
+    uint256[] public startRewardTime;
     address public svt;
     address public srt;
-    uint256 public oneBlockReward; 
+    uint256[] public oneBlockReward; 
     uint256 public oneMonth;
     uint256 public totalWeight;
     uint256[9] public date = [
@@ -51,8 +51,8 @@ contract Lock  is Ownable{
     } 
     function deposit(uint256 _amount,uint256 _rewardTime) public  onlyOwner{
         IERC20(srt).transferFrom(msg.sender, address(this), _amount);
-        oneBlockReward = _amount.div(_rewardTime);
-        startRewardTime = block.number;
+        oneBlockReward.push( _amount.div(_rewardTime));
+        startRewardTime.push(block.number);
         
     }
     function lock(uint256 _date,uint256 _amount) public {
@@ -60,7 +60,7 @@ contract Lock  is Ownable{
         uint256 _Weights = 0;
         uint256 _svtAmount = 0;
         if(userStartRewardTime[msg.sender][userTotalLock[msg.sender]] == 0) {
-            userStartRewardTime[msg.sender][userTotalLock[msg.sender]] = startRewardTime;
+            userStartRewardTime[msg.sender][userTotalLock[msg.sender]] = block.number;
         }
         for(uint256 i = 0 ; i < date.length ; i++){
             if(_date == date[i]){
@@ -80,7 +80,10 @@ contract Lock  is Ownable{
     function getUserCanClaimSrt() public view returns(uint256 ) {
         uint256 total = 0;
         for(uint256 i =0 ; i< userLockInfo[msg.sender].length ; i++ ) {
-            total= total.add(block.number.sub(userStartRewardTime[msg.sender][i]).mul( oneBlockReward.mul(userLockInfo[msg.sender][i].amount.mul(userLockInfo[msg.sender][i].weight).div(totalWeight))));
+            for(uint256 j =0 ; j <startRewardTime.length;j++){
+            total= total.add(block.number.sub(userStartRewardTime[msg.sender][i]).mul( oneBlockReward[j].mul(userLockInfo[msg.sender][i].amount.mul(userLockInfo[msg.sender][i].weight).div(totalWeight))));
+
+            }
         }
         return total;
     }
@@ -96,8 +99,10 @@ contract Lock  is Ownable{
             if(userLockInfo[msg.sender][i].amount == 0){
                 continue;
             }
-            per = block.number.sub(userStartRewardTime[msg.sender][i]).mul( oneBlockReward.mul(userLockInfo[msg.sender][i].amount.mul(userLockInfo[msg.sender][i].weight).div(totalWeight)));
+            for(uint256 j= 0; j < startRewardTime.length ; j ++){
+            per = block.number.sub(userStartRewardTime[msg.sender][i]).mul( oneBlockReward[j].mul(userLockInfo[msg.sender][i].amount.mul(userLockInfo[msg.sender][i].weight).div(totalWeight)));
             total= total.add(per);
+            }
             userStartRewardTime[msg.sender][i] = block.number;
             if(_amount == total){
             IERC20(srt).transfer(msg.sender,_amount);
