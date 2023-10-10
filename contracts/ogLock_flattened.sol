@@ -467,6 +467,7 @@ using SafeMath for uint256;
     uint256 withdrawId;
     address public  svt;
     uint256 public oneYear;
+    uint256 public intervalTime  =5;
     mapping(address => bool) public allowAddr;
     mapping(address => LockInfo[]) public userLockInfos;
     mapping(address => uint256 ) public notExtracted;
@@ -499,7 +500,7 @@ function setSvt(address _addr) public onlyOwner {
         function getUserCanClaim(address _user) public view returns(uint256) {
         uint256 total = 0;
         for(uint256 i = 0 ; i<getUserLockLength(_user);i++){
-            total = total.add(userLockInfos[_user][i].amount.mul(block.number.sub(userLockInfos[_user][i].lockBlock)).div(oneYear));
+            total = total.add(userLockInfos[_user][i].amount.mul(block.number.sub(userLockInfos[_user][i].lockBlock)).div(oneYear.div(intervalTime)));
         }
         return total.add(notExtracted[_user]);
     }
