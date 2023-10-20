@@ -1,23 +1,5 @@
 [
 	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_token",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "_amount",
-				"type": "uint256"
-			}
-		],
-		"name": "backToken",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"inputs": [],
 		"name": "ClaimSrt",
 		"outputs": [],
@@ -46,16 +28,16 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "_date",
+				"name": "_nft",
 				"type": "uint256"
 			},
 			{
 				"internalType": "uint256",
-				"name": "_amount",
+				"name": "_tokenId",
 				"type": "uint256"
 			}
 		],
-		"name": "lock",
+		"name": "lockNft",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -64,17 +46,22 @@
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "_sbd",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "_svt",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
 				"name": "_srt",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_supNft",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_bigNft",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_smallNft",
 				"type": "address"
 			}
 		],
@@ -111,45 +98,20 @@
 			},
 			{
 				"indexed": false,
-				"internalType": "uint256",
-				"name": "srtAmount",
-				"type": "uint256"
-			}
-		],
-		"name": "claimSrtRecord",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"internalType": "address",
-				"name": "user",
-				"type": "address"
+				"internalType": "string",
+				"name": "nft",
+				"type": "string"
 			},
 			{
 				"indexed": false,
 				"internalType": "uint256",
-				"name": "lockAmount",
+				"name": "tokenId",
 				"type": "uint256"
 			},
 			{
 				"indexed": false,
 				"internalType": "uint256",
-				"name": "period",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "weight",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "receiveSVT",
+				"name": "power",
 				"type": "uint256"
 			}
 		],
@@ -159,6 +121,37 @@
 	{
 		"inputs": [],
 		"name": "renounceOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_node",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_power",
+				"type": "uint256"
+			}
+		],
+		"name": "setPower",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_srt",
+				"type": "address"
+			}
+		],
+		"name": "setSrt",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -177,26 +170,6 @@
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "updatePower",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_amount",
-				"type": "uint256"
-			}
-		],
-		"name": "withdraw",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"anonymous": false,
 		"inputs": [
 			{
@@ -207,19 +180,50 @@
 			},
 			{
 				"indexed": false,
+				"internalType": "string",
+				"name": "nft",
+				"type": "string"
+			},
+			{
+				"indexed": false,
 				"internalType": "uint256",
-				"name": "unLockAmount",
+				"name": "tokenId",
 				"type": "uint256"
 			},
 			{
 				"indexed": false,
 				"internalType": "uint256",
-				"name": "receiveSVT",
+				"name": "power",
 				"type": "uint256"
 			}
 		],
-		"name": "withdrawRecord",
+		"name": "unLockRecord",
 		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "updatePower",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_nftClass",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "withdrawNft",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
 	},
 	{
 		"inputs": [
@@ -241,14 +245,47 @@
 		"type": "function"
 	},
 	{
-		"inputs": [
+		"inputs": [],
+		"name": "bigNft",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "BigNftAmount",
+		"outputs": [
 			{
 				"internalType": "uint256",
-				"name": "_rewardId",
+				"name": "",
 				"type": "uint256"
 			}
 		],
-		"name": "getEndRewardTime",
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "blockTime",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getContractSrtBalance",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -328,7 +365,7 @@
 				"type": "address"
 			}
 		],
-		"name": "getUserLockLength",
+		"name": "getUserLockInfosLength",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -377,8 +414,14 @@
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "MONTH",
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "nftPower",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -480,12 +523,25 @@
 	},
 	{
 		"inputs": [],
-		"name": "sbd",
+		"name": "smallNft",
 		"outputs": [
 			{
 				"internalType": "address",
 				"name": "",
 				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "SmallNftAmount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",
@@ -525,7 +581,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "svt",
+		"name": "supNft",
 		"outputs": [
 			{
 				"internalType": "address",
@@ -538,7 +594,39 @@
 	},
 	{
 		"inputs": [],
-		"name": "totalWeight",
+		"name": "SupNftAmount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalPower",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "userBigNftAmount",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -562,31 +650,26 @@
 				"type": "uint256"
 			}
 		],
-		"name": "userLockInfo",
+		"name": "userLockInfos",
 		"outputs": [
 			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "nft",
+				"type": "address"
+			},
+			{
 				"internalType": "uint256",
-				"name": "amount",
+				"name": "power",
 				"type": "uint256"
 			},
 			{
 				"internalType": "uint256",
-				"name": "weight",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "lockStartTime",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "lockTime",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "svtAmount",
+				"name": "startTimeBlock",
 				"type": "uint256"
 			}
 		],
@@ -601,7 +684,7 @@
 				"type": "address"
 			}
 		],
-		"name": "userWeight",
+		"name": "userPower",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -615,12 +698,50 @@
 	{
 		"inputs": [
 			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "userSmallNftAmount",
+		"outputs": [
+			{
 				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
 			}
 		],
-		"name": "Weights",
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "userSupNftAmount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "userTotalLock",
 		"outputs": [
 			{
 				"internalType": "uint256",

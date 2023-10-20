@@ -61,7 +61,6 @@ contract Lock  is Ownable{
     uint256 public MONTH = 2592000;
     address public svt;
     address public srt;
-    uint256 public oneMonth;
     uint256 public totalWeight;
     mapping(uint256 => uint256 ) public Weights;
     mapping(address => lockInfo[]) public userLockInfo;
@@ -69,7 +68,9 @@ contract Lock  is Ownable{
     mapping(address => uint256 ) public accSrtPerShare;
     mapping(address => uint256 ) public userWeight;
     mapping (address => uint256 ) public rewardDebt;
-
+    event lockRecord(address user, uint256 lockAmount, uint256 period, uint256 weight, uint256 receiveSVT);
+    event withdrawRecord(address user, uint256 unLockAmount,  uint256 receiveSVT);
+    event claimSrtRecord(address user, uint256 srtAmount);
 
 
     constructor(address _sbd, address _svt,address _srt){
@@ -88,19 +89,26 @@ contract Lock  is Ownable{
 
     } 
     function deposit(uint256 _amount,uint256 _rewardTime) public  onlyOwner{
-        require(_rewardTime > block.timestamp, "plz input reward time biggest than now");
-        TransferHelper.safeTransferFrom(srt, msg.sender, address(this), _amount);
+        require(_rewardTime > 0, "plz input reward time biggest than now");
         rewardTime.push(_rewardTime);
-
         startRewardTime.push(block.timestamp);
+        TransferHelper.safeTransferFrom(srt, msg.sender, address(this), _amount);
+
     }
+    function backToken(address _token, uint256 _amount) public onlyOwner {
+        require(IERC20(_token).balanceOf(address(this))>_amount,"Insufficient balance of withdrawn tokens");
+        TransferHelper.safeTransfer(_token , msg.sender, _amount);
+    }
+    function getEndRewardTime(uint256 _rewardId) public view returns(uint256) {
+        return startRewardTime[_rewardId].add(rewardTime[_rewardId]);
+    } 
     function getRewardLength() public view returns(uint256) {
         return startRewardTime.length;
     }
     function lock(uint256 _date,uint256 _amount) public {
             require(
             _date == 0 ||
-            _date == 1 ||
+            _date == 1 || 
             _date == 3 ||
             _date == 6 ||
             _date == 9 ||
@@ -110,27 +118,28 @@ contract Lock  is Ownable{
             _date == 24 
             );
         uint256 _lockTime = 0;
-        uint256 _svtAmount = 0;
+        uint256 _svtAmount = _amount.mul(Weights[_date]);
           updatePower();
         if(userWeight[msg.sender] > 0 ){
             uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).sub(rewardDebt[msg.sender]);
-            TransferHelper.safeTransfer(sbd,msg.sender, pending);
+            TransferHelper.safeTransfer(srt,msg.sender, pending);
+            emit claimSrtRecord(msg.sender,pending );
         }
         rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]);
-            _lockTime = _date.mul(oneMonth);
+            _lockTime = _date.mul(MONTH);
             lockInfo memory _lockinfo = lockInfo({
                 amount:_amount,
                 weight:Weights[_date],
                 lockStartTime:block.number,
                 lockTime:_lockTime,
-                 svtAmount:_amount.mul(Weights[_date])
+                 svtAmount:_svtAmount
                  });
             userLockInfo[msg.sender].push(_lockinfo);
             totalWeight = totalWeight.add(_amount.mul(Weights[_date]));
             userWeight[msg.sender] = userWeight[msg.sender].add(_amount.mul(Weights[_date]));
             ISVT(svt).mint(msg.sender, _svtAmount);
             TransferHelper.safeTransferFrom(sbd,msg.sender,address(this),_amount);
-            
+            emit lockRecord(msg.sender, _amount,_lockTime,Weights[_date],_svtAmount );
     }
     function getMultiplier(uint256 _from, uint256 _to, uint256 i) public view returns (uint256) {
         if (_from >= lastRewardBlock[msg.sender][i]) {
@@ -194,11 +203,9 @@ contract Lock  is Ownable{
         uint256 total = 0;
         uint256 per = 0;
             updatePower();
-        if(userWeight[msg.sender] > 0 ){
             uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).sub(rewardDebt[msg.sender]);
-            TransferHelper.safeTransfer(sbd,msg.sender, pending);
-        }
-        rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]);
+            TransferHelper.safeTransfer(srt,msg.sender, pending);
+            rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]);
         for(uint256 i = 0; i < userLockInfo[msg.sender].length ; i++) {
             if(userLockInfo[msg.sender][i].amount ==0){
                 continue;
@@ -210,14 +217,13 @@ contract Lock  is Ownable{
             }else{
                 totalWeight = totalWeight.sub(userLockInfo[msg.sender][i].amount.mul(userLockInfo[msg.sender][i].weight));
                 userLockInfo[msg.sender][i].amount  =0;
-
             }
             userLockInfo[msg.sender][i].lockStartTime = block.number;
             userLockInfo[msg.sender][i].svtAmount = userLockInfo[msg.sender][i].svtAmount.sub(per.mul(userLockInfo[msg.sender][i].weight));
             ISVT(svt).burn(msg.sender, per.mul(userLockInfo[msg.sender][i].weight));
             if(_amount == total){
             TransferHelper.safeTransfer(sbd,msg.sender, _amount);
-            
+            emit withdrawRecord(msg.sender,_amount,pending );
             }
         }
     }

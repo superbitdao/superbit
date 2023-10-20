@@ -1453,7 +1453,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     mapping(address =>mapping(address => bool)) public blackList;
     mapping(uint256 => address) public nftType;
     mapping(address => bool) public testAddr;
-    mapping(uint256 =>mapping(address => ))
+    // mapping(uint256 =>mapping(address => ))
     event allteam(
         address admin1,
         address admin2,
