@@ -33,7 +33,6 @@ contract NFTLock is Ownable,ReentrancyGuard{
     mapping(address => uint256) public  userSupNftAmount;
     mapping(address => uint256) public userBigNftAmount;
     mapping(address =>uint256) public userSmallNftAmount;
-  
     mapping(address => uint256[] ) public lastRewardBlock;
     mapping(address => uint256 ) public accSrtPerShare;
     mapping(address => uint256 ) public userPower;
@@ -64,6 +63,9 @@ contract NFTLock is Ownable,ReentrancyGuard{
         reward .push(_amount);
         rewardTime.push(_rewardTime);
         startRewardTime.push(block.timestamp);
+    }
+    function backToken(address _token, uint256 _amount) public onlyOwner{
+        IERC20(_token).transfer(msg.sender, _amount);
     }
     function getRewardLength() public view returns(uint256 ){
         return reward.length;

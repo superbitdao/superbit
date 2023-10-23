@@ -90,6 +90,7 @@ contract Lock  is Ownable{
     } 
     function deposit(uint256 _amount,uint256 _rewardTime) public  onlyOwner{
         require(_rewardTime > 0, "plz input reward time biggest than now");
+        reward.push(_amount);
         rewardTime.push(_rewardTime);
         startRewardTime.push(block.timestamp);
         TransferHelper.safeTransferFrom(srt, msg.sender, address(this), _amount);
@@ -123,7 +124,6 @@ contract Lock  is Ownable{
         if(userWeight[msg.sender] > 0 ){
             uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).sub(rewardDebt[msg.sender]);
             TransferHelper.safeTransfer(srt,msg.sender, pending);
-            emit claimSrtRecord(msg.sender,pending );
         }
         rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]);
             _lockTime = _date.mul(MONTH);
@@ -196,12 +196,26 @@ contract Lock  is Ownable{
         if(userWeight[msg.sender] > 0 ){
             uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).sub(rewardDebt[msg.sender]);
             TransferHelper.safeTransfer(sbd,msg.sender, pending);
+            emit claimSrtRecord(msg.sender,pending );
+
         }
         rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]);
+
+    }
+    function canClaimSbd(address _user) public view returns(uint256 ){
+        uint256 total = 0;
+        for(uint256 i = 0; i < userLockInfo[_user].length ; i++) {
+           if(userLockInfo[_user][i].amount ==0){
+                continue;
+            }
+            if(userLockInfo[_user][i].lockTime + userLockInfo[_user][i].lockStartTime < block.timestamp){
+                total = total.add(userLockInfo[_user][i].amount);
+            }
+        }
+        return total;
     }
     function withdraw(uint256 _amount) public {
         uint256 total = 0;
-        uint256 per = 0;
             updatePower();
             uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).sub(rewardDebt[msg.sender]);
             TransferHelper.safeTransfer(srt,msg.sender, pending);
@@ -210,17 +224,10 @@ contract Lock  is Ownable{
             if(userLockInfo[msg.sender][i].amount ==0){
                 continue;
             }
-            per = userLockInfo[msg.sender][i].amount.mul(block.number.sub(userLockInfo[msg.sender][i].lockStartTime)).div(userLockInfo[msg.sender][i].lockTime);
-            total= total.add(per);
-            if(userLockInfo[msg.sender][i].amount > per){
-            userLockInfo[msg.sender][i].amount = userLockInfo[msg.sender][i].amount.sub(per);
-            }else{
-                totalWeight = totalWeight.sub(userLockInfo[msg.sender][i].amount.mul(userLockInfo[msg.sender][i].weight));
-                userLockInfo[msg.sender][i].amount  =0;
+            if(userLockInfo[msg.sender][i].lockStartTime + userLockInfo[msg.sender][i].lockTime <= block.timestamp){
+                total = total.add(userLockInfo[msg.sender][i].amount);
+                ISVT(svt).burn(msg.sender,userLockInfo[msg.sender][i]. amount.mul(userLockInfo[msg.sender][i].weight));
             }
-            userLockInfo[msg.sender][i].lockStartTime = block.number;
-            userLockInfo[msg.sender][i].svtAmount = userLockInfo[msg.sender][i].svtAmount.sub(per.mul(userLockInfo[msg.sender][i].weight));
-            ISVT(svt).burn(msg.sender, per.mul(userLockInfo[msg.sender][i].weight));
             if(_amount == total){
             TransferHelper.safeTransfer(sbd,msg.sender, _amount);
             emit withdrawRecord(msg.sender,_amount,pending );
