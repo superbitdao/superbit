@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-
+interface ISVT {
+    function mint(address _to, uint256 _amount)external;
+    function burn(address _to, uint256 _amount)external;
+    
+}
 
 // File: contracts/libraries/TransferHelper.sol
 
@@ -37,11 +41,7 @@ library TransferHelper {
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-interface ISVT {
-    function mint(address _to, uint256 _amount)external;
-    function burn(address _to, uint256 _amount)external;
-    
-}
+
 
 contract Lock  is Ownable{
     using SafeMath for uint256 ;
@@ -57,21 +57,24 @@ contract Lock  is Ownable{
     uint256[] public startRewardTime;
     uint256[] public rewardTime;
     uint256 public intervalTime = 5;
+    uint256 lockSbdLimit;
     address public  sbd;
     uint256 public MONTH = 2592000;
     address public svt;
     address public srt;
     uint256 public totalWeight;
+    lockInfo[] public allLockInfo;
     mapping(uint256 => uint256 ) public Weights;
     mapping(address => lockInfo[]) public userLockInfo;
-    mapping(address => uint256[] ) public lastRewardBlock;
+    mapping(address => uint256) public lastRewardBlock;
     mapping(address => uint256 ) public accSrtPerShare;
     mapping(address => uint256 ) public userWeight;
     mapping (address => uint256 ) public rewardDebt;
     event lockRecord(address user, uint256 lockAmount, uint256 period, uint256 weight, uint256 receiveSVT);
-    event withdrawRecord(address user, uint256 unLockAmount,  uint256 receiveSVT);
+    event withdrawRecord(address user, uint256 unLockAmount,uint256 period,uint256 weight , uint256 burnSVT);
     event claimSrtRecord(address user, uint256 srtAmount);
-
+    event adminDeposit(address admin,address token, uint256 amount);
+    event adminWithdraw(address admin,address token, uint256 amount);
 
     constructor(address _sbd, address _svt,address _srt){
         sbd = _sbd;
@@ -90,15 +93,25 @@ contract Lock  is Ownable{
     } 
     function deposit(uint256 _amount,uint256 _rewardTime) public  onlyOwner{
         require(_rewardTime > 0, "plz input reward time biggest than now");
+        uint256 currentTime = block.timestamp;
         reward.push(_amount);
-        rewardTime.push(_rewardTime);
-        startRewardTime.push(block.timestamp);
+        rewardTime.push(_rewardTime.sub(currentTime));
+        startRewardTime.push(currentTime);
         TransferHelper.safeTransferFrom(srt, msg.sender, address(this), _amount);
-
+        emit adminDeposit(msg.sender, srt,_amount);
     }
     function backToken(address _token, uint256 _amount) public onlyOwner {
-        require(IERC20(_token).balanceOf(address(this))>_amount,"Insufficient balance of withdrawn tokens");
+        uint256 contractSbdAmount = IERC20(sbd).balanceOf(address(this));
+        uint256 limitAmount = 0;
+        require(IERC20(_token).balanceOf(address(this)) >= _amount,"Insufficient balance of withdrawn tokens");
+        if(_token == sbd){
+            limitAmount = contractSbdAmount.sub(lockSbdLimit);
+            require(_amount <= limitAmount, "Withdrawal exceeds limit");
+            TransferHelper.safeTransfer(_token , msg.sender, _amount);
+            return;
+        }
         TransferHelper.safeTransfer(_token , msg.sender, _amount);
+        emit adminWithdraw(msg.sender, _token, _amount);
     }
     function getEndRewardTime(uint256 _rewardId) public view returns(uint256) {
         return startRewardTime[_rewardId].add(rewardTime[_rewardId]);
@@ -120,86 +133,97 @@ contract Lock  is Ownable{
             );
         uint256 _lockTime = 0;
         uint256 _svtAmount = _amount.mul(Weights[_date]);
-          updatePower();
+          updatePower(msg.sender);
         if(userWeight[msg.sender] > 0 ){
-            uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).sub(rewardDebt[msg.sender]);
+            uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12).sub(rewardDebt[msg.sender]);
             TransferHelper.safeTransfer(srt,msg.sender, pending);
         }
-        rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]);
+        rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
             _lockTime = _date.mul(MONTH);
             lockInfo memory _lockinfo = lockInfo({
                 amount:_amount,
                 weight:Weights[_date],
-                lockStartTime:block.number,
+                lockStartTime:block.timestamp,
                 lockTime:_lockTime,
                  svtAmount:_svtAmount
                  });
+            allLockInfo.push(_lockinfo);
             userLockInfo[msg.sender].push(_lockinfo);
             totalWeight = totalWeight.add(_amount.mul(Weights[_date]));
             userWeight[msg.sender] = userWeight[msg.sender].add(_amount.mul(Weights[_date]));
             ISVT(svt).mint(msg.sender, _svtAmount);
+            lockSbdLimit = lockSbdLimit.add(_amount);
             TransferHelper.safeTransferFrom(sbd,msg.sender,address(this),_amount);
             emit lockRecord(msg.sender, _amount,_lockTime,Weights[_date],_svtAmount );
     }
-    function getMultiplier(uint256 _from, uint256 _to, uint256 i) public view returns (uint256) {
-        if (_from >= lastRewardBlock[msg.sender][i]) {
+    function getMultiplier(uint256 _from, uint256 _to ) public pure returns (uint256) {
+        if (_to > _from) {
             return _to.sub(_from);
-        } else if(_from < lastRewardBlock[msg.sender][i]){
-            return _to.sub(lastRewardBlock[msg.sender][i]);
-        }else{
+        } 
+      else{
             return 0;
         }
       
     }
-       function updatePower() public {
-        for(uint256 i = 0 ; i < lastRewardBlock[msg.sender].length; i++){
+       function updatePower(address _user) public {
 
-        if(block.number <= lastRewardBlock[msg.sender][i]) {
+        for(uint256 i = 0; i<reward.length;i++){
+
+        if(block.number <= lastRewardBlock[_user]) {
             return;
         }
-        if(totalWeight == 0){
-            lastRewardBlock[msg.sender][i] = block.number;
+        if(totalWeight == 0 || lastRewardBlock[_user] == 0){
+            lastRewardBlock[_user] = block.number;
             return;
         }
-        uint256 multiplier = getMultiplier(lastRewardBlock[msg.sender][i], block.number, i);
+     
+        uint256 multiplier = getMultiplier(lastRewardBlock[_user], block.number);
         uint256 srtReward = multiplier.mul(getOneBlockReward(i));
-        accSrtPerShare[msg.sender] = accSrtPerShare[msg.sender].add(srtReward.div(totalWeight));
-        lastRewardBlock[msg.sender][i] = block.number;
-        }
+        accSrtPerShare[_user] = accSrtPerShare[_user].add(srtReward.mul(1e12).div(totalWeight));
+    }
+        lastRewardBlock[_user] = block.number;
 
     }
     function getOneBlockReward(uint256 _rewardId) public view returns(uint256) {
+        uint256 endTime = startRewardTime[_rewardId].add(rewardTime[_rewardId]) ;
+        if(block.timestamp > endTime){
+            return 0;
+        }
         return reward[_rewardId].div(rewardTime[_rewardId].div(intervalTime));
     }
  
-    function pendingSrt(address _user) public view returns(uint256 ) {
-           uint256 total = 0;
+    function pendingSrt(address _user) public view returns(uint256) {
+        if(accSrtPerShare[_user] == 0){
+            return 0;
+        }
         uint256 accSrtPerShareE = accSrtPerShare[_user];
-        for(uint256 i = 0 ; i <lastRewardBlock[_user].length;i++ ){
         uint256 powerSupply = totalWeight;
-        if (block.number > lastRewardBlock[_user][i] && powerSupply != 0) {
-            uint256 multiplier = getMultiplier(lastRewardBlock[_user][i], block.number,i);
+        uint256 weight = userWeight[_user];
+        uint256 debet = rewardDebt[_user];
+
+        for(uint256 i = 0 ; i <reward.length;i++ ){
+        if (block.number > lastRewardBlock[_user] && powerSupply !=0 ) {
+            uint256 multiplier = getMultiplier(lastRewardBlock[_user], block.number);
             uint256 srtReward = multiplier.mul(getOneBlockReward(i));
-            accSrtPerShareE = accSrtPerShare[_user].add(srtReward.div(powerSupply));
-            total = total.add(userWeight[_user].mul(accSrtPerShare[_user]).sub(rewardDebt[_user]));
+            accSrtPerShareE = accSrtPerShareE.add(srtReward.mul(1e12).div(powerSupply));
         }
         }
-       
-        return total;
+        return  weight.mul(accSrtPerShareE).div(1e12).sub(debet);
     }
     function getUserLockLength(address _user) public view returns(uint256 ){
         return userLockInfo[_user].length;
     } 
-
+    function getAllLockLength() public view returns(uint256){
+        return allLockInfo.length;
+    }
     function ClaimSrt() public {
-    updatePower();
+    updatePower(msg.sender);
         if(userWeight[msg.sender] > 0 ){
-            uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).sub(rewardDebt[msg.sender]);
-            TransferHelper.safeTransfer(sbd,msg.sender, pending);
+            uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12).sub(rewardDebt[msg.sender]);
+            TransferHelper.safeTransfer(srt,msg.sender, pending);
             emit claimSrtRecord(msg.sender,pending );
-
         }
-        rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]);
+        rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
 
     }
     function canClaimSbd(address _user) public view returns(uint256 ){
@@ -214,25 +238,32 @@ contract Lock  is Ownable{
         }
         return total;
     }
-    function withdraw(uint256 _amount) public {
-        uint256 total = 0;
-            updatePower();
-            uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).sub(rewardDebt[msg.sender]);
+    function withdraw(uint256 _id) public {
+        lockInfo storage user = userLockInfo[msg.sender][_id];
+
+        uint256 withdrawTime = 0;
+        uint256 withdrawAmount = 0;
+        uint256 burnAmount = 0;
+
+        burnAmount = user.amount.mul(user.weight);
+        withdrawAmount = user.amount;
+        withdrawTime =  user.lockStartTime.add(user.lockTime) ;
+            updatePower(msg.sender);
+            uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12).sub(rewardDebt[msg.sender]);
             TransferHelper.safeTransfer(srt,msg.sender, pending);
-            rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]);
-        for(uint256 i = 0; i < userLockInfo[msg.sender].length ; i++) {
-            if(userLockInfo[msg.sender][i].amount ==0){
-                continue;
+            rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
+            if(user.amount ==0){
+                revert("Missing withdrawal amount");
             }
-            if(userLockInfo[msg.sender][i].lockStartTime + userLockInfo[msg.sender][i].lockTime <= block.timestamp){
-                total = total.add(userLockInfo[msg.sender][i].amount);
-                ISVT(svt).burn(msg.sender,userLockInfo[msg.sender][i]. amount.mul(userLockInfo[msg.sender][i].weight));
+            if(withdrawTime <= block.timestamp){
+                user.amount =0;
+                ISVT(svt).burn(msg.sender,burnAmount);
+                userWeight[msg.sender] = userWeight[msg.sender].sub(burnAmount);
+                totalWeight = totalWeight.sub(burnAmount);
+                TransferHelper.safeTransfer(sbd,msg.sender, withdrawAmount);
+                emit withdrawRecord(msg.sender,withdrawAmount,user.lockTime,user.weight,burnAmount );
+
             }
-            if(_amount == total){
-            TransferHelper.safeTransfer(sbd,msg.sender, _amount);
-            emit withdrawRecord(msg.sender,_amount,pending );
-            }
-        }
     }
     
 }
