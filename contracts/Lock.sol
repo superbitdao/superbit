@@ -60,6 +60,7 @@ contract Lock  is Ownable{
     uint256 lockSbdLimit;
     address public  sbd;
     uint256 public MONTH = 2592000;
+    uint public day = 86400;
     address public svt;
     address public srt;
     uint256 public totalWeight;
@@ -95,7 +96,7 @@ contract Lock  is Ownable{
         require(_rewardTime > 0, "plz input reward time biggest than now");
         uint256 currentTime = block.timestamp;
         reward.push(_amount);
-        rewardTime.push(_rewardTime.sub(currentTime));
+        rewardTime.push(_rewardTime.mul(day));
         startRewardTime.push(currentTime);
         TransferHelper.safeTransferFrom(srt, msg.sender, address(this), _amount);
         emit adminDeposit(msg.sender, srt,_amount);

@@ -40,17 +40,18 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 contract NFTLock is Ownable,ReentrancyGuard{ 
     using SafeMath for uint256;
     struct lockInfo{
+        uint256 tokenId;
         address user;
         address nft;
         uint256 power;
         uint256 startTimeBlock;
-        bool status;
     }
     uint256[] public reward;
     uint256[] public rewardTime;
     uint256[] public startRewardTime;
 
     uint public intervalTime = 5;
+    uint public day = 86400;
     uint256 public blockTime;
     address public srt;
     address public supNft;
@@ -59,7 +60,6 @@ contract NFTLock is Ownable,ReentrancyGuard{
     uint256 public totalPower;
     uint256 public SupNftAmount;
     uint256 public BigNftAmount;
-
     uint256 public SmallNftAmount;
     lockInfo[] public lockInfos;
     mapping(address => uint256) public  userSupNftAmount;
@@ -93,10 +93,11 @@ contract NFTLock is Ownable,ReentrancyGuard{
         nftPower[_node] = _power;
     }
     function deposit(uint256 _amount,uint256 _rewardTime) public onlyOwner {
-        TransferHelper.safeTransferFrom(srt, msg.sender,address(this),_amount);
+        uint256 currentTime = block.timestamp;
         reward.push(_amount);
-        rewardTime.push(_rewardTime.sub(block.timestamp));
-        startRewardTime.push(block.timestamp);
+        rewardTime.push(_rewardTime.mul(day));
+        startRewardTime.push(currentTime);
+        TransferHelper.safeTransferFrom(srt, msg.sender,address(this),_amount);
         emit adminDeposit(msg.sender, srt,_amount);
 
     }
@@ -146,11 +147,11 @@ contract NFTLock is Ownable,ReentrancyGuard{
             require(IERC721(smallNft).balanceOf(msg.sender) != 0,"You do not have a small node NFT");
             IERC721(smallNft).transferFrom(msg.sender, address(this),_tokenId);
             lockInfo memory _info = lockInfo({
+                tokenId: _tokenId,
                 user: msg.sender,
                 nft:smallNft,
                 power: nftPower[smallNft],
-                startTimeBlock:block.number,
-                status: true
+                startTimeBlock:block.number
             });
             lockInfos.push(_info);
             userLockInfos[msg.sender].push(_info);
@@ -163,11 +164,11 @@ contract NFTLock is Ownable,ReentrancyGuard{
             require(IERC721(bigNft).balanceOf(msg.sender) != 0,"You do not have a small node NFT");
             IERC721(bigNft).transferFrom(msg.sender, address(this),_tokenId);
             lockInfo memory _info = lockInfo({
+                tokenId: _tokenId,
                 user: msg.sender,
                 nft : bigNft,
                 power: nftPower[bigNft],
-                startTimeBlock:block.number,
-                status: true
+                startTimeBlock:block.number
             });
             lockInfos.push(_info);
 
@@ -182,11 +183,11 @@ contract NFTLock is Ownable,ReentrancyGuard{
             require(IERC721(supNft).balanceOf(msg.sender) != 0,"You do not have a small node NFT");
             IERC721(supNft).transferFrom(msg.sender, address(this),_tokenId);
             lockInfo memory _info = lockInfo({
+                tokenId: _tokenId,
                 user: msg.sender,
                 nft:supNft,
                 power: nftPower[supNft],
-                startTimeBlock:block.number,
-                status: true
+                startTimeBlock:block.number
             });
             lockInfos.push(_info);
 
@@ -216,6 +217,9 @@ contract NFTLock is Ownable,ReentrancyGuard{
         uint256 accSrtPerShareE = accSrtPerShare[_user];
         uint256 debet = rewardDebt[_user];
         uint256 _userPower = userPower[_user];
+        if(_userPower == 0) {
+            return 0;
+        }
         for(uint256 i = 0 ; i <reward.length;i++ ){
         uint256 powerSupply = totalPower;
         if (block.number > lastRewardBlock[_user] && powerSupply != 0) {
@@ -234,6 +238,10 @@ contract NFTLock is Ownable,ReentrancyGuard{
             rewardDebt[msg.sender] = userPower[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
         emit claimSrtRecord(msg.sender, pending);
     }
+    function deleteNft(address _user,uint256 _order) internal{
+        userLockInfos[_user][_order] = userLockInfos[_user][userLockInfos[_user].length - 1];
+        userLockInfos[_user].pop();
+    }
 
     function withdrawNft(uint256 _nftClass , uint256 _tokenId ) public  nonReentrant{
         uint256 bufferStatus = 0;
@@ -245,11 +253,14 @@ contract NFTLock is Ownable,ReentrancyGuard{
         if(_nftClass == 1){
             require(IERC721(smallNft).balanceOf(address(this)) != 0 ," do not have a small node NFT");
             for(uint256 i =0 ; i < userLockInfos[msg.sender].length; i++){
-                require(userLockInfos[msg.sender][i].status  && smallNft == userLockInfos[msg.sender][i].nft ,
+                require(
+                smallNft == userLockInfos[msg.sender][i].nft &&
+                _tokenId == userLockInfos[msg.sender][i].tokenId ,
                 "You don t have this small Node NFT");
                 bufferStatus = i;
             } 
-            userLockInfos[msg.sender][bufferStatus].status = false;
+            userLockInfos[msg.sender][bufferStatus] = userLockInfos[msg.sender][userLockInfos[msg.sender].length - 1];
+            userLockInfos[msg.sender].pop();
             IERC721(smallNft).safeTransferFrom(address(this),msg.sender,_tokenId);
             totalPower = totalPower.sub(nftPower[smallNft]);
             userPower[msg.sender] = userPower[msg.sender].sub(nftPower[smallNft]);
@@ -259,12 +270,15 @@ contract NFTLock is Ownable,ReentrancyGuard{
         }else if(_nftClass == 2) {
      require(IERC721(bigNft).balanceOf(address(this)) != 0 ," do not have a big node NFT");
             for(uint256 i =0 ; i< userLockInfos[msg.sender].length; i++){
-                require(userLockInfos[msg.sender][i].status  && bigNft == userLockInfos[msg.sender][i].nft,
+                require(
+               
+                bigNft == userLockInfos[msg.sender][i].nft &&
+                _tokenId == userLockInfos[msg.sender][i].tokenId,
                 "You don t have this Big Node NFT");
                 bufferStatus = i;
 
             }
-            userLockInfos[msg.sender][bufferStatus].status = false;
+            deleteNft(msg.sender,bufferStatus );
             IERC721(bigNft).safeTransferFrom(address(this),msg.sender,_tokenId);
             totalPower = totalPower.sub(nftPower[bigNft]);
             userPower[msg.sender] = userPower[msg.sender].sub(nftPower[bigNft]);
@@ -275,11 +289,13 @@ contract NFTLock is Ownable,ReentrancyGuard{
         }else if(_nftClass == 3){ 
      require(IERC721(supNft).balanceOf(address(this)) != 0 ," do not have a sup node NFT");
             for(uint256 i =0 ; i< userLockInfos[msg.sender].length; i++){
-                require(userLockInfos[msg.sender][i].user == msg.sender && supNft == userLockInfos[msg.sender][i].nft,
+                require(
+                supNft == userLockInfos[msg.sender][i].nft &&
+                _tokenId == userLockInfos[msg.sender][i].tokenId ,
                 "You don t have this Sup Node NFT");
                 bufferStatus = i;
             }
-            userLockInfos[msg.sender][bufferStatus].status = false;
+            deleteNft(msg.sender,bufferStatus );
             IERC721(supNft).safeTransferFrom(address(this),msg.sender,_tokenId);
             totalPower = totalPower.sub(nftPower[supNft]);
             userPower[msg.sender] = userPower[msg.sender].sub(nftPower[supNft]);

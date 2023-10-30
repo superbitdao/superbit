@@ -378,6 +378,19 @@
 	},
 	{
 		"inputs": [],
+		"name": "day",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
 		"name": "getContractSrtBalance",
 		"outputs": [
 			{
@@ -520,6 +533,11 @@
 		"name": "lockInfos",
 		"outputs": [
 			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			},
+			{
 				"internalType": "address",
 				"name": "user",
 				"type": "address"
@@ -538,11 +556,6 @@
 				"internalType": "uint256",
 				"name": "startTimeBlock",
 				"type": "uint256"
-			},
-			{
-				"internalType": "bool",
-				"name": "status",
-				"type": "bool"
 			}
 		],
 		"stateMutability": "view",
@@ -788,6 +801,11 @@
 		"name": "userLockInfos",
 		"outputs": [
 			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			},
+			{
 				"internalType": "address",
 				"name": "user",
 				"type": "address"
@@ -806,11 +824,6 @@
 				"internalType": "uint256",
 				"name": "startTimeBlock",
 				"type": "uint256"
-			},
-			{
-				"internalType": "bool",
-				"name": "status",
-				"type": "bool"
 			}
 		],
 		"stateMutability": "view",
