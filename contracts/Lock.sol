@@ -41,9 +41,10 @@ library TransferHelper {
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 
-contract Lock  is Ownable{
+contract Lock  is Ownable,ReentrancyGuard{
     using SafeMath for uint256 ;
 
     struct lockInfo{
@@ -56,7 +57,7 @@ contract Lock  is Ownable{
     uint256[] public reward;
     uint256[] public startRewardTime;
     uint256[] public rewardTime;
-    uint256 public intervalTime = 5;
+    uint256 public intervalTime = 3;
     uint256 lockSbdLimit;
     address public  sbd;
     uint256 public MONTH = 2592000;
@@ -92,6 +93,18 @@ contract Lock  is Ownable{
         Weights[24] = 9;
 
     } 
+    function annualized() public view returns(uint256){
+        uint256 totalReward = 0;
+        uint256 oneYearBlock = MONTH.mul(12).div(intervalTime);
+        for(uint256 i = 0; i < reward.length; i++){
+            uint256 _rewardTime = startRewardTime[i].add(rewardTime[i]);
+            if( _rewardTime < block.timestamp ){
+                continue;
+            }
+            totalReward = totalReward.add(getOneBlockReward(i));
+        }
+       return totalReward.div(totalWeight).mul(oneYearBlock);
+    }
     function deposit(uint256 _amount,uint256 _rewardTime) public  onlyOwner{
         require(_rewardTime > 0, "plz input reward time biggest than now");
         uint256 currentTime = block.timestamp;
@@ -157,16 +170,18 @@ contract Lock  is Ownable{
             TransferHelper.safeTransferFrom(sbd,msg.sender,address(this),_amount);
             emit lockRecord(msg.sender, _amount,_lockTime,Weights[_date],_svtAmount );
     }
-    function getMultiplier(uint256 _from, uint256 _to ) public pure returns (uint256) {
+    function getMultiplier(uint256 _from, uint256 _to,uint256 _i ) public view returns (uint256) {
         if (_to > _from) {
             return _to.sub(_from);
-        } 
+        } else if(_to >= startRewardTime[_i] + rewardTime[_i] && _from < startRewardTime[_i] + rewardTime[_i]){
+            return startRewardTime[_i].add(rewardTime[_i]).sub(_from);
+        }
       else{
             return 0;
         }
       
     }
-       function updatePower(address _user) public {
+       function updatePower(address _user) public  nonReentrant {
 
         for(uint256 i = 0; i<reward.length;i++){
 
@@ -178,7 +193,7 @@ contract Lock  is Ownable{
             return;
         }
      
-        uint256 multiplier = getMultiplier(lastRewardBlock[_user], block.number);
+        uint256 multiplier = getMultiplier(lastRewardBlock[_user], block.number, i);
         uint256 srtReward = multiplier.mul(getOneBlockReward(i));
         accSrtPerShare[_user] = accSrtPerShare[_user].add(srtReward.mul(1e12).div(totalWeight));
     }
@@ -186,10 +201,6 @@ contract Lock  is Ownable{
 
     }
     function getOneBlockReward(uint256 _rewardId) public view returns(uint256) {
-        uint256 endTime = startRewardTime[_rewardId].add(rewardTime[_rewardId]) ;
-        if(block.timestamp > endTime){
-            return 0;
-        }
         return reward[_rewardId].div(rewardTime[_rewardId].div(intervalTime));
     }
  
@@ -204,7 +215,7 @@ contract Lock  is Ownable{
 
         for(uint256 i = 0 ; i <reward.length;i++ ){
         if (block.number > lastRewardBlock[_user] && powerSupply !=0 ) {
-            uint256 multiplier = getMultiplier(lastRewardBlock[_user], block.number);
+            uint256 multiplier = getMultiplier(lastRewardBlock[_user], block.number, i);
             uint256 srtReward = multiplier.mul(getOneBlockReward(i));
             accSrtPerShareE = accSrtPerShareE.add(srtReward.mul(1e12).div(powerSupply));
         }
@@ -218,14 +229,12 @@ contract Lock  is Ownable{
         return allLockInfo.length;
     }
     function ClaimSrt() public {
-    updatePower(msg.sender);
-        if(userWeight[msg.sender] > 0 ){
-            uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12).sub(rewardDebt[msg.sender]);
-            TransferHelper.safeTransfer(srt,msg.sender, pending);
-            emit claimSrtRecord(msg.sender,pending );
-        }
+        require(userWeight[msg.sender] > 0,"Your computing power is 0, please confirm and try again");
+        updatePower(msg.sender);
+        uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12).sub(rewardDebt[msg.sender]);
         rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
-
+        TransferHelper.safeTransfer(srt,msg.sender, pending);
+        emit claimSrtRecord(msg.sender,pending );
     }
     function canClaimSbd(address _user) public view returns(uint256 ){
         uint256 total = 0;

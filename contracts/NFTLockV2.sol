@@ -139,10 +139,13 @@ contract NFTLock is Ownable,ReentrancyGuard{
     function getRewardLength() public view returns(uint256 ){
         return reward.length;
     }
-      function getMultiplier(uint256 _from, uint256 _to) public pure returns (uint256) {
+      function getMultiplier(uint256 _from, uint256 _to,uint256 _i) public view returns (uint256) {
         if (_to > _from) {
             return _to.sub(_from);
-        } else{
+        } else if(_to >= startRewardTime[_i] + rewardTime[_i] && _from < startRewardTime[_i] + rewardTime[_i]){
+            return startRewardTime[_i].add(rewardTime[_i]).sub(_from);
+        }
+      else{
             return 0;
         }
       
@@ -157,7 +160,7 @@ contract NFTLock is Ownable,ReentrancyGuard{
             lastRewardBlock[_user] = block.number;
             return;
         }
-        uint256 multiplier = getMultiplier(lastRewardBlock[_user], block.number);
+        uint256 multiplier = getMultiplier(lastRewardBlock[_user], block.number,i);
         uint256 srtReward = multiplier.mul(getOneBlockReward(i));
         accSrtPerShare[_user] = accSrtPerShare[_user].add(srtReward.mul(1e12).div(totalPower));
         }
@@ -257,7 +260,7 @@ contract NFTLock is Ownable,ReentrancyGuard{
         for(uint256 i = 0 ; i <reward.length;i++ ){
         uint256 powerSupply = totalPower;
         if (block.number > lastRewardBlock[_user] && powerSupply != 0) {
-            uint256 multiplier = getMultiplier(lastRewardBlock[_user], block.number);
+            uint256 multiplier = getMultiplier(lastRewardBlock[_user], block.number,i);
             uint256 srtReward = multiplier.mul(getOneBlockReward(i));
             accSrtPerShareE = accSrtPerShareE.add(srtReward.mul(1e12).div(powerSupply));
         }
