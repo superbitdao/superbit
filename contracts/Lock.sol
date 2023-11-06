@@ -150,7 +150,11 @@ contract Lock  is Ownable,ReentrancyGuard{
           updatePower(msg.sender);
         if(userWeight[msg.sender] > 0 ){
             uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12).sub(rewardDebt[msg.sender]);
+            if(pending > 0){
             TransferHelper.safeTransfer(srt,msg.sender, pending);
+            }else {
+                require(false,"Lack of withdrawal limit");
+            }
         }
         rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
             _lockTime = _date.mul(MONTH);
@@ -171,9 +175,10 @@ contract Lock  is Ownable,ReentrancyGuard{
             emit lockRecord(msg.sender, _amount,_lockTime,Weights[_date],_svtAmount );
     }
     function getMultiplier(uint256 _from, uint256 _to,uint256 _i ) public view returns (uint256) {
+        uint256 _rewardTime = (startRewardTime[_i].add(rewardTime[_i])).div(intervalTime);
         if (_to > _from) {
             return _to.sub(_from);
-        } else if(_to >= startRewardTime[_i] + rewardTime[_i] && _from < startRewardTime[_i] + rewardTime[_i]){
+        } else if(_to >= _rewardTime && _from < _rewardTime){
             return startRewardTime[_i].add(rewardTime[_i]).sub(_from);
         }
       else{
@@ -233,7 +238,11 @@ contract Lock  is Ownable,ReentrancyGuard{
         updatePower(msg.sender);
         uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12).sub(rewardDebt[msg.sender]);
         rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
+        if(pending > 0 ){
         TransferHelper.safeTransfer(srt,msg.sender, pending);
+        }else{
+        require(false,"Lack of withdrawal limit");
+        }
         emit claimSrtRecord(msg.sender,pending );
     }
     function canClaimSbd(address _user) public view returns(uint256 ){
@@ -260,7 +269,13 @@ contract Lock  is Ownable,ReentrancyGuard{
         withdrawTime =  user.lockStartTime.add(user.lockTime) ;
             updatePower(msg.sender);
             uint256 pending = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12).sub(rewardDebt[msg.sender]);
+            if(pending > 0) {
             TransferHelper.safeTransfer(srt,msg.sender, pending);
+
+            }else{
+        require(false,"Lack of withdrawal limit");
+                
+            }
             rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
             if(user.amount ==0){
                 revert("Missing withdrawal amount");
