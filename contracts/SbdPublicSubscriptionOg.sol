@@ -1363,6 +1363,9 @@ interface ISVT{
     function mint(address _to, uint256 _amount)external;
     function burn(address _to, uint256 _amount) external;
 }
+interface ISPT{
+    function mint(address _to, uint256 _amount)external;
+}
 //add Accuracy
 contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
 
@@ -1374,18 +1377,23 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         address assign;
         uint256 rate;
     }
+    struct userSrtOrderInfo{
+        address user;
+        uint256 startAmount;
+        uint256 amount;
+        uint256 startTime;
+        uint256 time;
+        uint256 endTime;
+
+    }
 
     EnumerableSet.AddressSet private adminsLevelTwo;
     EnumerableSet.AddressSet private adminsLevelThree;
-    EnumerableSet.AddressSet private adminsLevelFour;
-    EnumerableSet.AddressSet private adminsLevelFive;
-    EnumerableSet.AddressSet private adminsLevelSix;
-    EnumerableSet.AddressSet private adminsLevelSeven;
-    EnumerableSet.AddressSet private adminsLevelEight;
-    EnumerableSet.AddressSet private adminsLevelNine;
     EnumerableSet.AddressSet private supAccount;
 
-	ERC20 public sbd;
+	address public sbd;
+    address public srt;
+    address public spt;
     uint256 maxUint256 = 2**256 - 1;
     bool public initRate;
     bool public initTeamRate;
@@ -1399,15 +1407,15 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
 	uint256 public salePrice;
     uint256 public maxTwo;
     uint256 public maxThree;
-    uint256 public maxFour;
-    uint256 public maxFive;
-    uint256 public maxSix;
-    uint256 public maxSeven;
-    uint256 public maxEight;
-    uint256 public maxNine;
+    uint256 public blockNumberAmount;
+    uint256 public oneDay = 86400;
+    uint256 public timeInterval = 13;
     uint256 public supAccountTotalUsedAmount;
     uint256[] public inviteRate;
     uint256[] public teamRate;
+    uint256[] public SPTrate;
+    
+    uint256[] public sptRatioTwo;
     uint256 public buyId;
     uint256 public totalDonate;
     uint256[] public validNumbers =
@@ -1431,12 +1439,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     mapping(address => address) public recommender;
     mapping(address => address[]) public setAdminLevelTwo_;
     mapping(address => address[]) public setAdminLevelThree_;
-    mapping(address => address[]) public setAdminLevelFour_;
-    mapping(address => address[]) public setAdminLevelFive_;
-    mapping(address => address[]) public setAdminLevelSix_;
-    mapping(address => address[]) public setAdminLevelSeven_;
-    mapping(address => address[]) public setAdminLevelEight_;
-    mapping(address => address[]) public setAdminLevelNine_;
     mapping(address => bool) public isNotRegister;
     mapping(address => uint256) public activeInviteAmount;
     mapping(address => uint256) public supAccountUsedAmount;
@@ -1444,41 +1446,25 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     mapping(address => address) public userTeam;
     mapping(address =>mapping(address => bool)) public blackList;
     mapping(uint256 => address) public nftType;
+    mapping(uint256 => uint256 ) public inviteSrtRatio;
+    mapping(address => userSrtOrderInfo[]) public userSrtOrderInfos;
     event allteam(
         address admin1,
         address admin2,
         address admin3,
-        address admin4,
-        address admin5,
-        address admin6,
-        address admin7,
-        address admin8,
-        address admin9,
         address addr
     );
     event allteamrate(
         uint256 rate1,
         uint256 rate2,
         uint256 rate3,
-        uint256 rate4,
-        uint256 rate5,
-        uint256 rate6,
-        uint256 rate7,
-        uint256 rate8,
-        uint256 rate9,
         address addr
     );
     event allInvite(
         address recommender1,
         address recommender2,
-        address recommender3,
-        address recommender4,
-        address recommender5,
         uint256 rate1,
         uint256 rate2,
-        uint256 rate3,
-        uint256 rate4,
-        uint256 rate5,
         address addr
     );
     event allRecord(
@@ -1503,42 +1489,14 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         require(checkAddrForAdminLevelThree(msg.sender));
         _;
     }
-    modifier onlyAdminFour() {
-        require(checkAddrForAdminLevelFour(msg.sender));
-        _;
-    }
-    modifier onlyAdminFive() {
-        require(checkAddrForAdminLevelFive(msg.sender));
-        _;
-    }
-    modifier onlyAdminSix(){
-        require(checkAddrForAdminLevelSix(msg.sender));
-        _;
-    }
-    modifier onlyAdminSeven(){
-        require(checkAddrForAdminLevelSeven(msg.sender));
-        _;
-    }
-    modifier onlyAdminEight(){
-        require(checkAddrForAdminLevelEight(msg.sender));
-        _;
-    }
-    modifier onlyAdminNine(){
-        require(checkAddrForAdminLevelNine(msg.sender));
-        _;
-    }
-	constructor(ERC20 _sbd,  address _usdt, address _svt, address _supNode , address _bigNode,address _smallNode,address _ogLock) {
+   
+	constructor(address  _sbd,address _srt,  address _usdt, address _svt, address _supNode , address _bigNode,address _smallNode,address _ogLock) {
 		sbd = _sbd;
+        srt = _srt;
 		usdt = _usdt;
 		salePrice = 3;
         maxTwo = 50;
         maxThree = 50;
-        maxFour = 50;
-        maxFive = 50;
-        maxSix = 50;
-        maxSeven = 50;
-        maxEight = 50;
-        maxNine = 50;
         supAccountTotalUsedAmount = 50;
         registerId =1;
         svt = _svt;
@@ -1546,6 +1504,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         bigNode = _bigNode;
         smallNode = _smallNode;
         ogLock = _ogLock;
+        blockNumberAmount = oneDay.mul(1000).div(timeInterval);
         setNftType(2000,_smallNode );
         setNftType(3000, _smallNode);
         setNftType(4000, _smallNode);
@@ -1556,8 +1515,21 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         setNftType(9000,_bigNode);
         setNftType(10000,_supNode);
 	}
+    function setSptRatioTwo(uint256[] memory _ratio) public onlyOwner {
+        require(_ratio.length ==2);
+        for(uint256 i = 0 ;i < _ratio.length;i++){
+            sptRatioTwo.push(_ratio[i]);
+
+        }
+    }
     function setOgLock(address _oglock) public onlyOwner{
         ogLock = _oglock;
+    }
+    function setSptRatio(uint256[] memory _rate) public onlyOwner {
+        require( _rate.length == 5);
+         for(uint256 i = 0 ; i < _rate.length;i++){
+            SPTrate.push(_rate[i]);
+         }
     }
   
     function setSvt(address _svt)public onlyOwner {
@@ -1596,7 +1568,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     }
  
   
-	function setSBDAddress(ERC20 _sbd) public onlyOwner {
+	function setSBDAddress(address _sbd) public onlyOwner {
 		sbd = _sbd;
 	}
 	function setSalePrice(uint256 _salePrice) public onlyOwner {
@@ -1616,48 +1588,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }
         maxThree = _max;
     }
-    function setAdminForFour(uint256 _max) public onlyOwner {
-        if(_max == 0) {
-        maxFour = maxUint256;
-        return;
-        }
-        maxFour = _max;
-    }
-    function setAdminForFive(uint256 _max) public onlyOwner {
-        if(_max ==  0) {
-            maxFive = maxUint256;
-            return;
-        }
-        maxFive = _max;
-    }
-     function setAdminForSix(uint256 _max) public onlyOwner {
-        if(_max ==  0) {
-            maxSix = maxUint256;
-            return;
-        }
-        maxSix = _max;
-    }
-     function setAdminForSeven(uint256 _max) public onlyOwner {
-        if(_max ==  0) {
-            maxSeven = maxUint256;
-            return;
-        }
-        maxSeven = _max;
-    }
-     function setAdminForEight(uint256 _max) public onlyOwner {
-        if(_max ==  0) {
-            maxEight = maxUint256;
-            return;
-        }
-        maxEight = _max;
-    }
-     function setAdminForNine(uint256 _max) public onlyOwner {
-        if(_max ==  0) {
-            maxNine = maxUint256;
-            return;
-        }
-        maxNine = _max;
-    }
  
     function checkAddrForSupAccount(address _user) public view returns(bool) {
         return supAccount.contains(_user);
@@ -1668,27 +1598,9 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     function checkAddrForAdminLevelThree(address _user) public view returns(bool){
         return adminsLevelThree.contains(_user);
     }
-    function checkAddrForAdminLevelFour(address _user) public view returns(bool){
-        return adminsLevelFour.contains(_user);
-    }
-    function checkAddrForAdminLevelFive(address _user) public view returns(bool){
-        return adminsLevelFive.contains(_user);
-    }
-    function checkAddrForAdminLevelSix(address _user) public view returns(bool){
-        return adminsLevelSix.contains(_user);
-    }
-    function checkAddrForAdminLevelSeven(address _user) public view returns(bool){
-        return adminsLevelSeven.contains(_user);
-    }
-    function checkAddrForAdminLevelEight(address _user) public view returns(bool){
-        return adminsLevelEight.contains(_user);
-    }
-    function checkAddrForAdminLevelNine(address _user) public view returns(bool){
-        return adminsLevelNine.contains(_user);
-    }
     function checkTeam(address _user) public view returns(bool) {
         address team = recommender[_user];
-        for(uint256 i = 0 ;i < 9 ;i++){
+        for(uint256 i = 0 ;i < 3 ;i++){
             if(msg.sender == team){
                 return true;
             }
@@ -1733,79 +1645,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             
         }
     }
-      function setAdminLevelFour(address[] memory _addr) public onlyAdminThree{
-        require(setAdminLevelFour_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint i=0;i<_addr.length;i++){
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);    
-            require(!checkAddrForAdminLevelFour(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelFour.add(_addr[i]);
-           setAdminLevelFour_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-
-        }
-    }
-    function setAdminLevelFive(address[] memory _addr) public onlyAdminFour {
-        require(setAdminLevelFive_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint i=0;i<_addr.length;i++){
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);    
-            require(!checkAddrForAdminLevelFive(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelFive.add(_addr[i]);
-            setAdminLevelFive_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-        }
-    }
-       function setAdminLevelSix(address[] memory _addr) public onlyAdminFive {
-        require(setAdminLevelSix_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint i=0;i<_addr.length;i++){
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);
-            require(!checkAddrForAdminLevelSix(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelSix.add(_addr[i]);
-            setAdminLevelSix_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-        }
-    }
-   function setAdminLevelSeven(address[] memory _addr) public onlyAdminSix {
-        require(setAdminLevelSeven_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint i=0;i<_addr.length;i++){
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);
-            require(!checkAddrForAdminLevelSeven(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelSeven.add(_addr[i]);
-            setAdminLevelSeven_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-        }
-    }
-       function setAdminLevelEight(address[] memory _addr) public onlyAdminSeven {
-        require(setAdminLevelEight_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint i=0;i<_addr.length;i++){
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);
-            require(!checkAddrForAdminLevelEight(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelEight.add(_addr[i]);
-            setAdminLevelEight_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-        }
-    }
-    function setAdminLevelNine(address[] memory _addr) public onlyAdminEight {
-        require(setAdminLevelNine_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint i=0;i<_addr.length;i++){
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);
-            require(!checkAddrForAdminLevelNine(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelNine.add(_addr[i]);
-            setAdminLevelNine_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-        }
-    }
+  
     function removeAdminLevelTwo(address _addr) public onlyOwner{
         adminsLevelTwo.remove(_addr);
         for(uint256 i = 0 ; i < setAdminLevelTwo_[msg.sender].length; i ++) {
@@ -1826,96 +1666,23 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             }
         }
     }
-    function removeAdminLevelFour(address _addr) public onlyAdminThree{
-        adminsLevelFour.remove(_addr);
-          for(uint256 i = 0 ; i < setAdminLevelFour_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelFour_[msg.sender][i]){
-                setAdminLevelFour_[msg.sender][i] = setAdminLevelFour_[msg.sender][setAdminLevelFour_[msg.sender].length - 1];
-                setAdminLevelFour_[msg.sender].pop();
-                return;
-            }
-        }
-    }
-    function removeAdminLevelFive(address _addr) public onlyAdminFour{
-            adminsLevelFive.remove(_addr);
-               for(uint256 i = 0 ; i < setAdminLevelFive_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelFive_[msg.sender][i]){
-                setAdminLevelFive_[msg.sender][i] = setAdminLevelFive_[msg.sender][setAdminLevelFive_[msg.sender].length - 1];
-                setAdminLevelFive_[msg.sender].pop();
-                return;
-            }
-        }
-           
-    }
-      function removeAdminLevelSix(address _addr) public onlyAdminFive{
-            adminsLevelSix.remove(_addr);
-               for(uint256 i = 0 ; i < setAdminLevelSix_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelSix_[msg.sender][i]){
-                setAdminLevelSix_[msg.sender][i] = setAdminLevelSix_[msg.sender][setAdminLevelSix_[msg.sender].length - 1];
-                setAdminLevelSix_[msg.sender].pop();
-                return;
-            }
-        }
-           
-    }  function removeAdminLevelSeven(address _addr) public onlyAdminSix{
-            adminsLevelSeven.remove(_addr);
-               for(uint256 i = 0 ; i < setAdminLevelSeven_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelSeven_[msg.sender][i]){
-                setAdminLevelSeven_[msg.sender][i] = setAdminLevelSeven_[msg.sender][setAdminLevelSeven_[msg.sender].length - 1];
-                setAdminLevelSeven_[msg.sender].pop();
-                return;
-            }
-        }
-           
-    }  function removeAdminLevelEight(address _addr) public onlyAdminSeven{
-            adminsLevelEight.remove(_addr);
-               for(uint256 i = 0 ; i < setAdminLevelEight_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelEight_[msg.sender][i]){
-                setAdminLevelEight_[msg.sender][i] = setAdminLevelEight_[msg.sender][setAdminLevelEight_[msg.sender].length - 1];
-                setAdminLevelEight_[msg.sender].pop();
-                return;
-            }
-        }
-           
-    }  function removeAdminLevelNine(address _addr) public onlyAdminEight{
-            adminsLevelNine.remove(_addr);
-               for(uint256 i = 0 ; i < setAdminLevelNine_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelNine_[msg.sender][i]){
-                setAdminLevelNine_[msg.sender][i] = setAdminLevelNine_[msg.sender][setAdminLevelNine_[msg.sender].length - 1];
-                setAdminLevelNine_[msg.sender].pop();
-                return;
-            }
-        }
-           
-    }
+  
     
     function getMax(address _user) internal view returns(uint256) {
         if(checkAddrForAdminLevelTwo(_user)){
             return maxTwo;
         }else if(checkAddrForAdminLevelThree(_user)) {
             return maxThree;
-        }else if(checkAddrForAdminLevelFour(_user)){
-            return maxFour;
-        }else if(checkAddrForAdminLevelFive(_user)){
-            return maxFive;
-        }else if(checkAddrForAdminLevelSix(_user)){
-            return maxSix;
-        }else if(checkAddrForAdminLevelSeven(_user)){
-            return maxSeven;
-        }else if(checkAddrForAdminLevelEight(_user)){
-            return maxEight;
-        }else if(checkAddrForAdminLevelNine(_user)){
-            return maxNine;
         }
         return 0;
     }
-  function setActivateAccountForL2(address[] memory _user) public  onlyAdminTwo {
+  function setActivateAccountForLTwo(address[] memory _user) public  onlyAdminTwo {
         for(uint256 i = 0 ; i < _user.length ; i++){
             require(!checkAddrForSupAccount(_user[i]) && isNotRegister[_user[i]] == true);
             supAccount.add(_user[i]);
         }
     }
-    function setActivateAccountForL9(address[] memory  _user) public onlyAdminNine{
+    function setActivateAccountForLThree(address[] memory  _user) public onlyAdminThree{
     require(activeInviteAmount[msg.sender] <= getMax(msg.sender) && _user.length < getMax(msg.sender));
         for(uint256 i =0 ; i < _user.length ;i++) {
             require(!isNotRegister[_user[i]]);
@@ -1923,15 +1690,13 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             supAccount.add(_user[i]);
             inviteFunc(_user[i],msg.sender);
             activeInviteAmount[msg.sender] = activeInviteAmount[msg.sender].add(1);
-            for(uint256 j = 1 ; j < 9 ; j ++){
-                userTeamReward[_user[i]][0] = msg.sender; 
+            userTeamReward[_user[i]][0] = msg.sender; 
+            for(uint256 j = 1 ; j < 3 ; j ++){
                 userTeamReward[_user[i]][j] = recommender[userTeamReward[_user[i]][j - 1 ]];
             }
             emit allRegister(0, msg.sender, _user[i]);
         }
     }
-  
-
     function addAssignAddressAndRatio(address[] memory _addr, uint256[] memory _rate) public onlyOwner{
         require(initRate, 'please initial addInviteRate()');
         for(uint i = 0 ; i < _addr.length; i++) {
@@ -1971,9 +1736,15 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         });
 
     }
+    function addInviteSrtRatio(uint256[] memory _rate) public onlyOwner{
+        require(_rate.length == 2);
+        for(uint256 i =0; i < _rate.length; i++){
+        inviteSrtRatio[i] = _rate[i];
+        }
+    }
     function addTeamRate(uint256[] memory _rate) public onlyOwner{
         require(!initTeamRate);
-        require(_rate.length ==9);
+        require(_rate.length ==3);
         for(uint256 i = 0 ;i < _rate.length; i++){
             teamRate.push(_rate[i]);
         }
@@ -2027,12 +1798,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     function register(address _supAccountAddress) public nonReentrant whenNotPaused {
         require(checkAddrForSupAccount(_supAccountAddress));
         require(
-            !checkAddrForAdminLevelNine(msg.sender) &&
-            !checkAddrForAdminLevelEight(msg.sender) &&
-            !checkAddrForAdminLevelSeven(msg.sender)&&
-            !checkAddrForAdminLevelSix(msg.sender) &&
-            !checkAddrForAdminLevelFive(msg.sender) &&
-            !checkAddrForAdminLevelFour(msg.sender) &&
             !checkAddrForAdminLevelThree(msg.sender) &&
             !checkAddrForAdminLevelTwo(msg.sender));
         require(supAccountUsedAmount[_supAccountAddress] <= supAccountTotalUsedAmount);
@@ -2045,7 +1810,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         require(!isNotRegister[msg.sender] && !isRecommender[msg.sender] );
         inviteFunc(msg.sender, _supAccountAddress);
         userTeam[msg.sender] = _supAccountAddress;
-        for(uint256 i = 0 ; i < 9 ; i++){
+        for(uint256 i = 0 ; i < 3 ; i++){
         userTeamReward[msg.sender][i] = userTeamReward[_supAccountAddress][i];
         }
         isNotRegister[msg.sender] = true;
@@ -2053,6 +1818,35 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         emit allRegister(registerId,_supAccountAddress,msg.sender);
         registerId++;
     }
+    function CanClaimSrt(address _user) public view returns(uint256){
+        uint256 total = 0;
+        for(uint256 i = 0 ; i < userSrtOrderInfos[_user].length;i++){
+            if(userSrtOrderInfos[_user][i].amount == 0){
+                continue;
+            }
+            if(block.number > userSrtOrderInfos[_user][i].time && block.number < userSrtOrderInfos[_user][i].endTime){
+                uint256 OneBlockReward = userSrtOrderInfos[_user][i].startAmount.div(userSrtOrderInfos[_user][i].endTime.sub(userSrtOrderInfos[_user][i].startTime));
+                total = total.add((block.number.sub(userSrtOrderInfos[_user][i].time)).mul(OneBlockReward));
+            }
+        }
+        return total;
+    }
+     function ClaimSrt(address _user) public {
+             uint256 total = 0;
+        for(uint256 i = 0 ; i < userSrtOrderInfos[_user].length;i++){
+            if(userSrtOrderInfos[_user][i].amount == 0){
+                continue;
+            }
+            if(block.number > userSrtOrderInfos[_user][i].time && block.number < userSrtOrderInfos[_user][i].endTime){
+                uint256 OneBlockReward = userSrtOrderInfos[_user][i].startAmount.div(userSrtOrderInfos[_user][i].endTime.sub(userSrtOrderInfos[_user][i].startTime));
+                uint256 perReward = (block.number.sub(userSrtOrderInfos[_user][i].time)).mul(OneBlockReward);
+                total = total.add(perReward);
+                userSrtOrderInfos[_user][i].time = block.number;
+                userSrtOrderInfos[_user][i].amount = userSrtOrderInfos[_user][i].amount.sub(perReward);
+            }
+        }
+        TransferHelper.safeTransfer(srt, _user,total);
+     }
     function purchase(uint256 fee) external  whenNotPaused  nonReentrant{
         require(isNotRegister[msg.sender]  );
         require(getRate() == 10000);
@@ -2075,9 +1869,9 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         uint256 sbdAmount = fee.mul(1000).div(salePrice).mul(2).div(10);
         uint256 svtAmount = fee.mul(1000).div(salePrice).mul(8).div(10);
         uint256 salePrice_ = salePrice;
-        uint256 usdtAmount = fee;
-        for(uint i = 1 ; i < invitationLevel; i++){
+        uint256 timeBlock = block.number;
         invite[0] = recommender[msg.sender];
+        for(uint i = 1 ; i < invitationLevel; i++){
         invite[i] = recommender[invite[i - 1]];
         }
         require(sbdAmount <= getBalanceOfSbd());
@@ -2086,13 +1880,26 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
                     }
                     for(uint i = 0; i< invitationLevel;i++){
                 TransferHelper.safeTransferFrom(usdt,msg.sender,invite[i], fee.mul(inviteRate[i]).div(10000) );
+                    userSrtOrderInfo memory info = userSrtOrderInfo({
+                        user:invite[i],startAmount: fee.mul(inviteSrtRatio[i]).div(10000),amount: fee.mul(inviteSrtRatio[i]).div(10000), startTime:timeBlock,time:timeBlock, endTime: timeBlock.add(blockNumberAmount)
+                    });
+                    userSrtOrderInfos[invite[i]].push(info);
                     }
-                 
-                        for(uint i = 0 ; i < 9 ;i ++){
-                            if(blackList[userTeamReward[msg.sender][7]][userTeamReward[msg.sender][i]]){
+                    for(uint i = 0 ; i < 3 ;i ++){
+                            if(blackList[userTeamReward[msg.sender][1]][userTeamReward[msg.sender][i]]){
                                 continue;
                             }
                     TransferHelper.safeTransferFrom(usdt,msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(10000));
+                        }
+                        
+                        for(uint256 i = 0 ; i < 5; i++){
+                            if(invite[i] == address(0)){
+                                break;
+                            }
+                            ISPT(spt).mint(invite[i], fee.mul(SPTrate[i].div(10000)).mul(1e12));
+                        }
+                        for(uint256 i = 0; i< sptRatioTwo.length;i++){
+                            ISPT(spt).mint(invite[i], fee.mul(sptRatioTwo[i].div(10000)).mul(1e12));
                         }
         ISVT(svt).mint(msg.sender,svtAmount);
         TransferHelper.safeTransfer(address(sbd),msg.sender, sbdAmount );
@@ -2104,25 +1911,12 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
                 userTeamReward[msg.sender][0],
                 userTeamReward[msg.sender][1],
                 userTeamReward[msg.sender][2],
-                userTeamReward[msg.sender][3],
-                userTeamReward[msg.sender][4],
-                userTeamReward[msg.sender][5],
-                userTeamReward[msg.sender][6],
-                userTeamReward[msg.sender][7],
-                userTeamReward[msg.sender][8],
                 msg.sender
-             
             );
             emit allteamrate (
                 teamRate[0],
                 teamRate[1],
                 teamRate[2],
-                teamRate[3],
-                teamRate[4],
-                teamRate[5],
-                teamRate[6],
-                teamRate[7],
-                teamRate[8],
                 msg.sender
             );
             emit allRecord(
@@ -2130,20 +1924,14 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
             salePrice_,
             recommender[msg.sender],
             msg.sender,
-            usdtAmount,
+            fee,
             sbdAmount,
             svtAmount,
             _receiveNft
             );
             emit allInvite(
-            invite[4],
-            invite[3],
-            invite[2],
             invite[1],
             invite[0],
-            inviteRate[4],
-            inviteRate[3],
-            inviteRate[2],
             inviteRate[1],
             inviteRate[0],
             msg.sender
@@ -2155,7 +1943,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         return supAccount.values();
     }
 	function getBalanceOfSbd() public view returns(uint256) {
-		return sbd.balanceOf(address(this));
+		return IERC20(sbd).balanceOf(address(this));
 	}
     function getAssignAndRateslength() public view returns(uint256) {
         return assignAndRates.length;
@@ -2169,24 +1957,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
      function getAdminsLevelThreeLength(address _adminThree) public view returns(uint256) {
         return setAdminLevelThree_[_adminThree].length;
     }
-    function getAdminsLevelFourLength(address _adminFour) public view returns(uint256) {
-        return setAdminLevelFour_[_adminFour].length;
-    }
-      function getAdminsLevelFiveLength(address _adminFive) public view returns(uint256) {
-        return setAdminLevelFive_[_adminFive].length;
-    } 
-    function getAdminsLevelSixLength(address _adminSix) public view returns(uint256) {
-        return setAdminLevelSix_[_adminSix].length;
-    }   
-    function getAdminsLevelSevenLength(address _adminSeven) public view returns(uint256) {
-        return setAdminLevelSeven_[_adminSeven].length;
-    }   
-    function getAdminsLevelEightLength(address _adminEight) public view returns(uint256) {
-        return setAdminLevelEight_[_adminEight].length;
-    }   
-    function getAdminsLevelNineLength(address _adminNine) public view returns(uint256) {
-        return setAdminLevelNine_[_adminNine].length;
-    }
+  
     function receiveSbd(uint256 _usdtAmount) public view returns(uint256 ){
         return _usdtAmount.mul(1000).div(salePrice);
     }

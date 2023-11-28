@@ -72,6 +72,8 @@ contract NFTLock is Ownable,ReentrancyGuard{
     mapping(address => uint256 ) public nftPower;
     mapping(address => lockInfo[]) public userLockInfos;
     mapping(address => uint256 ) public userTotalLock;
+    mapping(uint256 => uint256 ) public adminDepositBlock;
+
     event lockRecord(address user, string  nft, uint256 tokenId, uint256 power);
     event unLockRecord(address user, string nft, uint256 tokenId, uint256 power);
     event claimSrtRecord(address user, uint256 amount);
@@ -97,6 +99,8 @@ contract NFTLock is Ownable,ReentrancyGuard{
         reward.push(_amount);
         rewardTime.push(_rewardTime.mul(day));
         startRewardTime.push(currentTime);
+        adminDepositBlock[reward.length] = block.number;
+
         TransferHelper.safeTransferFrom(srt, msg.sender,address(this),_amount);
         emit adminDeposit(msg.sender, srt,_amount);
 
@@ -111,10 +115,14 @@ contract NFTLock is Ownable,ReentrancyGuard{
         return reward.length;
     }
       function getMultiplier(uint256 _from, uint256 _to,uint256 _i) public view returns (uint256) {
+        uint256 _rewardTime = (startRewardTime[_i].add(rewardTime[_i])).div(intervalTime);
+        if(_from ==0  && _to > startRewardTime[_i] && _to < _rewardTime ) {
+            return _to.sub(startRewardTime[_i]);
+        }
         if (_to > _from) {
             return _to.sub(_from);
-        } else if(_to >= startRewardTime[_i] + rewardTime[_i] && _from < startRewardTime[_i] + rewardTime[_i]){
-            return startRewardTime[_i].add(rewardTime[_i]).sub(_from);
+        } else if(_to >= _rewardTime && _from < _rewardTime){
+            return _rewardTime.sub(_from);
         }
       else{
             return 0;
@@ -122,15 +130,16 @@ contract NFTLock is Ownable,ReentrancyGuard{
       
     }
     function updatePower(address _user) public nonReentrant {
-        for(uint256 i = 0; i<reward.length;i++){
 
-        if(block.number <= lastRewardBlock[_user]) {
+        if(block.number <= lastRewardBlock[_user] || getContractSrtBalance() == 0 ) {
             return;
         }
-        if(totalPower == 0 || lastRewardBlock[_user] == 0){
+        if(totalPower == 0  ){
             lastRewardBlock[_user] = block.number;
             return;
         }
+        for(uint256 i = 0; i<reward.length;i++){
+
         uint256 multiplier = getMultiplier(lastRewardBlock[_user], block.number,i);
         uint256 srtReward = multiplier.mul(getOneBlockReward(i));
         accSrtPerShare[_user] = accSrtPerShare[_user].add(srtReward.mul(1e12).div(totalPower));

@@ -72,6 +72,7 @@ contract Lock  is Ownable,ReentrancyGuard{
     mapping(address => uint256 ) public accSrtPerShare;
     mapping(address => uint256 ) public userWeight;
     mapping (address => uint256 ) public rewardDebt;
+    mapping(uint256 => uint256 ) public adminDepositBlock;
     event lockRecord(address user, uint256 lockAmount, uint256 period, uint256 weight, uint256 receiveSVT);
     event withdrawRecord(address user, uint256 unLockAmount,uint256 period,uint256 weight , uint256 burnSVT);
     event claimSrtRecord(address user, uint256 srtAmount);
@@ -93,17 +94,26 @@ contract Lock  is Ownable,ReentrancyGuard{
         Weights[24] = 9;
 
     } 
-    function annualized() public view returns(uint256){
+    function annualized() internal view returns(uint256){
+        if(reward.length == 0){
+            return 0;
+        }
         uint256 totalReward = 0;
         uint256 oneYearBlock = MONTH.mul(12).div(intervalTime);
+        uint256 buffer = 0;
         for(uint256 i = 0; i < reward.length; i++){
             uint256 _rewardTime = startRewardTime[i].add(rewardTime[i]);
-            if( _rewardTime < block.timestamp ){
+            if(  block.timestamp >_rewardTime ){
                 continue;
             }
             totalReward = totalReward.add(getOneBlockReward(i));
         }
-       return totalReward.div(totalWeight).mul(oneYearBlock);
+        buffer = totalReward.mul(1e12).div(totalWeight).mul(oneYearBlock);
+       return buffer;
+    }
+    function outPutAnnualized() public view returns(uint256) {
+        uint256 rate = annualized() / 1e10;
+        return rate;
     }
     function deposit(uint256 _amount,uint256 _rewardTime) public  onlyOwner{
         require(_rewardTime > 0, "plz input reward time biggest than now");
@@ -112,6 +122,7 @@ contract Lock  is Ownable,ReentrancyGuard{
         rewardTime.push(_rewardTime.mul(day));
         startRewardTime.push(currentTime);
         TransferHelper.safeTransferFrom(srt, msg.sender, address(this), _amount);
+        adminDepositBlock[reward.length] = block.number;
         emit adminDeposit(msg.sender, srt,_amount);
     }
     function backToken(address _token, uint256 _amount) public onlyOwner {
@@ -153,7 +164,7 @@ contract Lock  is Ownable,ReentrancyGuard{
             if(pending > 0){
             TransferHelper.safeTransfer(srt,msg.sender, pending);
             }else {
-                require(false,"Lack of withdrawal limit");
+                revert("Lack of withdrawal limit");
             }
         }
         rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
@@ -174,12 +185,22 @@ contract Lock  is Ownable,ReentrancyGuard{
             TransferHelper.safeTransferFrom(sbd,msg.sender,address(this),_amount);
             emit lockRecord(msg.sender, _amount,_lockTime,Weights[_date],_svtAmount );
     }
+    function getBlock() public view returns(uint256) {
+        return block.number;
+    }
+    function getTime() public view returns(uint256){
+        return block.timestamp;
+    }
     function getMultiplier(uint256 _from, uint256 _to,uint256 _i ) public view returns (uint256) {
         uint256 _rewardTime = (startRewardTime[_i].add(rewardTime[_i])).div(intervalTime);
+        uint256 _startTime =  adminDepositBlock[_i+1];
+        if(_from == 0 && _to > _startTime && _to < _rewardTime ) {
+            return _to.sub(_startTime);
+        }
         if (_to > _from) {
             return _to.sub(_from);
         } else if(_to >= _rewardTime && _from < _rewardTime){
-            return startRewardTime[_i].add(rewardTime[_i]).sub(_from);
+            return _rewardTime.sub(_from);
         }
       else{
             return 0;
@@ -188,16 +209,14 @@ contract Lock  is Ownable,ReentrancyGuard{
     }
        function updatePower(address _user) public  nonReentrant {
 
-        for(uint256 i = 0; i<reward.length;i++){
-
-        if(block.number <= lastRewardBlock[_user]) {
+        if(block.number <= lastRewardBlock[_user] || getContractSrtBalance()  == 0) {
             return;
         }
-        if(totalWeight == 0 || lastRewardBlock[_user] == 0){
+        if(totalWeight == 0 ){
             lastRewardBlock[_user] = block.number;
             return;
         }
-     
+        for(uint256 i = 0; i<reward.length;i++){
         uint256 multiplier = getMultiplier(lastRewardBlock[_user], block.number, i);
         uint256 srtReward = multiplier.mul(getOneBlockReward(i));
         accSrtPerShare[_user] = accSrtPerShare[_user].add(srtReward.mul(1e12).div(totalWeight));
@@ -241,7 +260,7 @@ contract Lock  is Ownable,ReentrancyGuard{
         if(pending > 0 ){
         TransferHelper.safeTransfer(srt,msg.sender, pending);
         }else{
-        require(false,"Lack of withdrawal limit");
+        revert("Lack of withdrawal limit");
         }
         emit claimSrtRecord(msg.sender,pending );
     }
@@ -273,7 +292,7 @@ contract Lock  is Ownable,ReentrancyGuard{
             TransferHelper.safeTransfer(srt,msg.sender, pending);
 
             }else{
-        require(false,"Lack of withdrawal limit");
+            revert("Lack of withdrawal limit");
                 
             }
             rewardDebt[msg.sender] = userWeight[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
@@ -289,6 +308,9 @@ contract Lock  is Ownable,ReentrancyGuard{
                 emit withdrawRecord(msg.sender,withdrawAmount,user.lockTime,user.weight,burnAmount );
 
             }
+    }
+     function getContractSrtBalance() public view returns(uint256) {
+        return IERC20(srt).balanceOf(address(this));
     }
     
 }
