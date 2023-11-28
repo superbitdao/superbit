@@ -144,5 +144,6 @@ contract dividend is Ownable{
                 TransferHelper.safeTransfer(rewardToken, users[i], rewardAmount);
             }
         }
+        status = false;
     }
 }
