@@ -1414,8 +1414,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     uint256[] public inviteRate;
     uint256[] public teamRate;
     uint256[] public SPTrate;
-    
-    uint256[] public sptRatioTwo;
     uint256 public buyId;
     uint256 public totalDonate;
     uint256[] public validNumbers =
@@ -1515,13 +1513,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         setNftType(9000,_bigNode);
         setNftType(10000,_supNode);
 	}
-    function setSptRatioTwo(uint256[] memory _ratio) public onlyOwner {
-        require(_ratio.length ==2);
-        for(uint256 i = 0 ;i < _ratio.length;i++){
-            sptRatioTwo.push(_ratio[i]);
 
-        }
-    }
     function setOgLock(address _oglock) public onlyOwner{
         ogLock = _oglock;
     }
@@ -1898,9 +1890,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
                             }
                             ISPT(spt).mint(invite[i], fee.mul(SPTrate[i].div(10000)).mul(1e12));
                         }
-                        for(uint256 i = 0; i< sptRatioTwo.length;i++){
-                            ISPT(spt).mint(invite[i], fee.mul(sptRatioTwo[i].div(10000)).mul(1e12));
-                        }
+                  
         ISVT(svt).mint(msg.sender,svtAmount);
         TransferHelper.safeTransfer(address(sbd),msg.sender, sbdAmount );
         TransferHelper.safeTransfer(address(sbd),ogLock, sbdAmount );

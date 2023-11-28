@@ -387,6 +387,7 @@ contract SPT is ERC20 {
     EnumerableSet.AddressSet private dividendUser;
     address admin;
     mapping(address =>bool ) public access;
+    event record(address user, uint256 amount);
     constructor () ERC20("SPT","SPT"){
         admin = msg.sender;
     }
@@ -401,6 +402,7 @@ contract SPT is ERC20 {
         require(access[msg.sender],"NO ACCESS");
         _mint(_to,_amount);
         dividendUser.add(_to);
+        emit record(_to, _amount);
     }
     function getDividendUsers() external view returns(address[] memory){
         return dividendUser.values();

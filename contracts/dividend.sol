@@ -1,6 +1,165 @@
 
 
 
+//File:./lib/safeMath.sol
+
+pragma solidity ^0.8.0;
+
+library SafeMath {
+    /**
+     * @dev Returns the addition of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `+` operator.
+     *
+     * Requirements:
+     *
+     * - Addition cannot overflow.
+     */
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "SafeMath: addition overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, "SafeMath: subtraction overflow");
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        require(b <= a, errorMessage);
+        uint256 c = a - b;
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `*` operator.
+     *
+     * Requirements:
+     *
+     * - Multiplication cannot overflow.
+     */
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+        // benefit is lost if 'b' is also tested.
+        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+        if (a == 0) {
+            return 0;
+        }
+
+        uint256 c = a * b;
+        require(c / a == b, "SafeMath: multiplication overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers. Reverts on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "SafeMath: division by zero");
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers. Reverts with custom message on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        require(b > 0, errorMessage);
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * Reverts when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        return mod(a, b, "SafeMath: modulo by zero");
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * Reverts with custom message when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        require(b != 0, errorMessage);
+        return a % b;
+    }
+}
+
 // File: contracts/libraries/TransferHelper.sol
 
 
@@ -112,18 +271,28 @@ interface ISPT{
     function getDividendUsers() external view returns(address[] memory);
 }
 contract dividend is Ownable{
+    using SafeMath for uint256;
     bool public status;
     uint256 public startDividendTime;
+    uint256 public cycle;
     address public spt;
+    uint256 public rewardThreshold;
     address public rewardToken;
     uint256 public rewardAmount;
     mapping(address => uint256 )public userAmount;
     constructor(address _spt){
         spt = _spt;
+        cycle = 604800;
 
     }
-    function setRewardAmount(uint256 _amount) public onlyOwner{
-        rewardAmount = _amount;
+    function setStartDividendTime(uint256 _startDividendTime) public onlyOwner{
+        startDividendTime = _startDividendTime;
+    }
+    function setCycle(uint256 _cycle) public onlyOwner{
+        cycle = _cycle;
+    }
+    function setRewardThreshold(uint256 _rewardThreshold) public onlyOwner{
+        rewardThreshold  =_rewardThreshold;
     }
     function updateUserAmount() public {
         require(!status,"already update");
@@ -131,17 +300,28 @@ contract dividend is Ownable{
          for(uint256 i= 0; i < users.length;i++){
          userAmount[users[i]] = IERC20(spt).balanceOf(users[i]);
         }
-        startDividendTime = block.timestamp;
         status = true;
+    }
+    function getBase() internal view returns(uint256){
+        address[] memory users = ISPT(spt).getDividendUsers();
+        uint256 total;
+            for(uint256 i= 0; i < users.length;i++){
+            uint256 balance = IERC20(spt).balanceOf(users[i]);
+            if(balance - userAmount[users[i]] >= rewardThreshold ){
+                total = total.add(1);
+            }
+        }
+        return total;
     }
     function dividendToken()public {
         require(status,"plz update");
-        require(block.timestamp - startDividendTime >= 604800 );
+        require(block.timestamp - startDividendTime >= cycle );
+        rewardAmount = IERC20(rewardToken).balanceOf(address(this));
         address[] memory users = ISPT(spt).getDividendUsers();
         for(uint256 i= 0; i < users.length;i++){
             uint256 balance = IERC20(spt).balanceOf(users[i]);
-            if(balance - userAmount[users[i]] >= 5000*1e18 ){
-                TransferHelper.safeTransfer(rewardToken, users[i], rewardAmount);
+            if(balance - userAmount[users[i]] >= rewardThreshold ){
+                TransferHelper.safeTransfer(rewardToken, users[i], rewardAmount.div(getBase()));
             }
         }
         status = false;
