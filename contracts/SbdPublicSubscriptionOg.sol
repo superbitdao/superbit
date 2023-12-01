@@ -1367,12 +1367,12 @@ interface ISPT{
     function mint(address _to, uint256 _amount)external;
 }
 //add Accuracy
-contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
+contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
 
     using SafeMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-  uint256 constant private invitationLevel = 5;
+  uint256 constant private invitationLevel = 3;
     struct assignAndRate {
         address assign;
         uint256 rate;
@@ -1422,13 +1422,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         500000000000000000000,
         1000000000000000000000,
         2000000000000000000000,
-        3000000000000000000000,
-        4000000000000000000000,
         5000000000000000000000,
-        6000000000000000000000,
-        7000000000000000000000,
-        8000000000000000000000,
-        9000000000000000000000,
         10000000000000000000000
     ];
     assignAndRate[] public assignAndRates;
@@ -1488,7 +1482,8 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         _;
     }
    
-	constructor(address  _sbd,address _srt,  address _usdt, address _svt, address _supNode , address _bigNode,address _smallNode,address _ogLock) {
+	constructor(address  _sbd,address _srt,  address _usdt,address _spt, address _svt, address _supNode , address _bigNode,address _smallNode,address _ogLock) {
+        spt = _spt;
 		sbd = _sbd;
         srt = _srt;
 		usdt = _usdt;
@@ -1503,16 +1498,14 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         smallNode = _smallNode;
         ogLock = _ogLock;
         blockNumberAmount = oneDay.mul(1000).div(timeInterval);
-        setNftType(2000,_smallNode );
-        setNftType(3000, _smallNode);
-        setNftType(4000, _smallNode);
+        setNftType(2000, _smallNode);
         setNftType(5000,_bigNode);
-        setNftType(6000,_bigNode);
-        setNftType(7000,_bigNode);
-        setNftType(8000,_bigNode);
-        setNftType(9000,_bigNode);
         setNftType(10000,_supNode);
 	}
+
+    function setSptAddress(address _spt) public onlyOwner {
+        spt = _spt;
+    }
 
     function setOgLock(address _oglock) public onlyOwner{
         ogLock = _oglock;
@@ -1558,8 +1551,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
     function setUsdt(address _usdt) public onlyOwner {
         usdt = _usdt;
     }
- 
-  
 	function setSBDAddress(address _sbd) public onlyOwner {
 		sbd = _sbd;
 	}
@@ -1625,7 +1616,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }
     }
     function setAdminLevelThree(address[] memory _addr) public onlyAdminTwo {
-        require(setAdminLevelThree_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
+        require(setAdminLevelThree_[msg.sender].length <= getMax(msg.sender) && _addr.length <= getMax(msg.sender));
         for(uint256 i = 0; i < _addr.length; i++){
             require(msg.sender != _addr[i]);
             require(!isNotRegister[_addr[i]]);
@@ -1675,7 +1666,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }
     }
     function setActivateAccountForLThree(address[] memory  _user) public onlyAdminThree{
-    require(activeInviteAmount[msg.sender] <= getMax(msg.sender) && _user.length < getMax(msg.sender));
+    require(activeInviteAmount[msg.sender] <= getMax(msg.sender) && _user.length <= getMax(msg.sender));
         for(uint256 i =0 ; i < _user.length ;i++) {
             require(!isNotRegister[_user[i]]);
             require(!checkAddrForSupAccount(_user[i]));
@@ -1690,7 +1681,6 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }
     }
     function addAssignAddressAndRatio(address[] memory _addr, uint256[] memory _rate) public onlyOwner{
-        require(initRate, 'please initial addInviteRate()');
         for(uint i = 0 ; i < _addr.length; i++) {
              if(assignAndRates.length > 0 ) {
                require(checkRepeat(_addr[i]), 'The added address is duplicated, please readjust and add again') ;
@@ -1749,7 +1739,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
    }
     function addInviteRate(uint256[] memory _rate) public onlyOwner{
         require(!initRate);
-        require(_rate.length == 5 || inviteRate.length < 5 );
+        require(_rate.length == 2);
         for(uint256 i = 0; i < _rate.length; i++) {
             inviteRate.push(_rate[i]);
         }
@@ -1856,6 +1846,8 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
         }else if( nftType[fee.div(10**18)]  == smallNode && ISmallNode(smallNode).getStatus()) {
             ISmallNode(smallNode).mintSmallNode(msg.sender);
             _receiveNft = smallNode;
+        }else{
+
         }
         address[invitationLevel] memory invite;
         uint256 sbdAmount = fee.mul(1000).div(salePrice).mul(2).div(10);
@@ -1870,7 +1862,7 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
                 for (uint256 i = 0; i < assignAndRates.length; i++) {
                     TransferHelper.safeTransferFrom(usdt,msg.sender,assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(10000));
                     }
-                    for(uint i = 0; i< invitationLevel;i++){
+                    for(uint i = 0; i< 2;i++){
                 TransferHelper.safeTransferFrom(usdt,msg.sender,invite[i], fee.mul(inviteRate[i]).div(10000) );
                     userSrtOrderInfo memory info = userSrtOrderInfo({
                         user:invite[i],startAmount: fee.mul(inviteSrtRatio[i]).div(10000),amount: fee.mul(inviteSrtRatio[i]).div(10000), startTime:timeBlock,time:timeBlock, endTime: timeBlock.add(blockNumberAmount)
@@ -1881,16 +1873,12 @@ contract SbdPublicSubscription is Ownable,Pausable ,ReentrancyGuard{
                             if(blackList[userTeamReward[msg.sender][1]][userTeamReward[msg.sender][i]]){
                                 continue;
                             }
+                            
                     TransferHelper.safeTransferFrom(usdt,msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(10000));
                         }
-                        
-                        for(uint256 i = 0 ; i < 5; i++){
-                            if(invite[i] == address(0)){
-                                break;
-                            }
+                        for(uint256 i = 0 ; i <invitationLevel; i++){
                             ISPT(spt).mint(invite[i], fee.mul(SPTrate[i].div(10000)).mul(1e12));
                         }
-                  
         ISVT(svt).mint(msg.sender,svtAmount);
         TransferHelper.safeTransfer(address(sbd),msg.sender, sbdAmount );
         TransferHelper.safeTransfer(address(sbd),ogLock, sbdAmount );

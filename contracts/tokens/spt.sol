@@ -387,7 +387,9 @@ contract SPT is ERC20 {
     EnumerableSet.AddressSet private dividendUser;
     address admin;
     mapping(address =>bool ) public access;
-    event record(address user, uint256 amount);
+    mapping(address =>  uint256[]) public timestamps;
+    mapping(address =>mapping(uint256 => uint256) )public timeToValue;
+    event record(address user, uint256 amount,uint256 blockTime);
     constructor () ERC20("SPT","SPT"){
         admin = msg.sender;
     }
@@ -400,12 +402,32 @@ contract SPT is ERC20 {
     }
     function mint(address _to,uint256 _amount) external{
         require(access[msg.sender],"NO ACCESS");
+        uint256 time = block.timestamp;
         _mint(_to,_amount);
-        dividendUser.add(_to);
-        emit record(_to, _amount);
+        timeToValue[_to][time] = _amount;
+        timestamps[_to].push(time);
+
+        if(!IsNotUserExit(_to)){
+            dividendUser.add(_to);
+        }
+        emit record(_to, _amount,time);
     }
+function getUserTimeLength(address _user) external view returns(uint256){
+    return timestamps[_user].length;
+}
+function getTimestamps(address _user) external view returns(uint256[] memory ){
+    return timestamps[_user];
+}
+function getSptAmount(address _user, uint256 _time) external view returns(uint256)
+{
+    return timeToValue[_user][_time];
+}
+
     function getDividendUsers() external view returns(address[] memory){
         return dividendUser.values();
+    }
+    function IsNotUserExit(address _user) internal view returns(bool){
+        return dividendUser.contains(_user);
     }
     function getTotalSupply() public view returns(uint256 ) {
         return totalSupply();

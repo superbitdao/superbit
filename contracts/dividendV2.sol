@@ -418,6 +418,7 @@ interface ISPT{
 contract dividend is Ownable{
     using SafeMath for uint256;
     IUniswapV2Router02 public uniswapV2Router;
+    uint256[] private poolTime;
 
     bool public status;
     uint256 public startDividendTime;
@@ -427,7 +428,7 @@ contract dividend is Ownable{
     ERC20 public rewardToken;
     address public usdt;
 
-    mapping(address => uint256 )public userAmount;
+    mapping(uint256  => uint256 )public poolAmount;
     constructor(ERC20 _rewardToken,address _spt,address _usdt){
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
@@ -437,9 +438,13 @@ contract dividend is Ownable{
         cycle = 604800;
 
     }
+    function updatePool(uint256 time, uint256 amount) external {
+        poolAmount[time] = amount;
+        poolTime.push(time);
+    }
     function setStartDividendTime(uint256 _startDividendTime) public onlyOwner{
         startDividendTime = _startDividendTime;
-        updateUserAmount();
+        // updateUserAmount();
     }
     function setCycle(uint256 _cycle) public onlyOwner{
         cycle = _cycle;
@@ -447,39 +452,57 @@ contract dividend is Ownable{
     function setRewardThreshold(uint256 _rewardThreshold) public onlyOwner{
         rewardThreshold  =_rewardThreshold;
     }
-    function updateUserAmount() internal {
-        require(!status,"already update");
-        address[] memory users = ISPT(spt).getDividendUsers();
-         for(uint256 i= 0; i < users.length;i++){
-         userAmount[users[i]] = IERC20(spt).balanceOf(users[i]);
-        }
-        status = true;
-    }
+    // function updateUserAmount() internal {
+    //     require(!status,"already update");
+    //     address[] memory users = ISPT(spt).getDividendUsers();
+    //      for(uint256 i= 0; i < users.length;i++){
+    //      userAmount[users[i]] = IERC20(spt).balanceOf(users[i]);
+    //     }
+    //     status = true;
+    // }
     function getBase() internal view returns(uint256){
         address[] memory users = ISPT(spt).getDividendUsers();
         uint256 total;
-            for(uint256 i= 0; i < users.length;i++){
-            uint256 balance = IERC20(spt).balanceOf(users[i]);
-            if(balance - userAmount[users[i]] >= rewardThreshold ){
-                total = total.add(1);
+        uint256 SptAmount  = 0;
+         for(uint256 i= 0; i < users.length;i++){
+            uint256[] memory times = ISPT(spt).getTimestamps(users[i]);
+            for(uint256 j = 0; j <times.length;j++ ){
+                if(times[j] > startDividendTime && times[j] <= startDividendTime + cycle ){
+                   SptAmount = SptAmount.add(ISPT(spt).getSptAmount(users[i],times[j]));
+                   if(SptAmount >= rewardThreshold ){
+                    total = total.add(1);
+                   }
+                }
             }
         }
         return total;
     }
     function dividendToken()public {
         require(status,"plz update");
-        require(block.timestamp - startDividendTime >= cycle );
-        uint256 contractTokenBalance = IERC20(usdt).balanceOf(address(this));
-        swapTokensForOther(contractTokenBalance);
-        uint256 rewardAmount = IERC20(rewardToken).balanceOf(address(this));
-        address[] memory users = ISPT(spt).getDividendUsers();
-        for(uint256 i= 0; i < users.length;i++){
-            uint256 balance = IERC20(spt).balanceOf(users[i]);
-            if(balance - userAmount[users[i]] >= rewardThreshold ){
-                TransferHelper.safeTransfer(address(rewardToken), users[i], rewardAmount.div(getBase()));
+        require(block.timestamp - startDividendTime >= cycle + 86400);
+        uint256 contractTokenBalance ;
+        for(uint256 i = 0; i < poolTime.length; i++){
+            if(poolTime[i] <= startDividendTime +cycle){
+             contractTokenBalance = poolAmount[poolTime[i]];
+            swapTokensForOther(contractTokenBalance);
+            break;
             }
         }
-        status = false;
+        uint256 rewardAmount = IERC20(rewardToken).balanceOf(address(this));
+        uint256 SptAmount = 0;
+        address[] memory users = ISPT(spt).getDividendUsers();
+        for(uint256 i= 0; i < users.length;i++){
+            uint256[] memory times = ISPT(spt).getTimestamps(users[i]);
+            for(uint256 j = 0; j <times.length;j++ ){
+                if(times[j] > startDividendTime && times[j] <= startDividendTime + cycle ){
+                   SptAmount = SptAmount.add(ISPT(spt).getSptAmount(users[i],times[j]));
+                   if(SptAmount >=rewardThreshold ){
+                    TransferHelper.safeTransfer(address(rewardToken), users[i], rewardAmount.div(getBase()));
+                   }
+                }
+            }
+        }
+        startDividendTime = startDividendTime.add(cycle);
     }
 
     function swapTokensForOther(uint256 tokenAmount) private {
