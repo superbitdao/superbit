@@ -1342,7 +1342,7 @@ library SafeMath {
 
 
 //	SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity =0.8.18;
 
 interface ISupNode{
     function mintSupNode(address _to) external;
@@ -1372,7 +1372,7 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
     using SafeMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-  uint256 constant private invitationLevel = 3;
+  uint256 constant private invitationLevel = 5;
     struct assignAndRate {
         address assign;
         uint256 rate;
@@ -1416,6 +1416,7 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
     uint256[] public SPTrate;
     uint256 public buyId;
     uint256 public totalDonate;
+    bool public initedSptRatio;
     uint256[] public validNumbers =
     [
         200000000000000000000,
@@ -1510,12 +1511,20 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
     function setOgLock(address _oglock) public onlyOwner{
         ogLock = _oglock;
     }
-    function setSptRatio(uint256[] memory _rate) public onlyOwner {
+    function addSptRatio(uint256[] memory _rate) public onlyOwner {
+        require(!initedSptRatio);
         require( _rate.length == 5);
          for(uint256 i = 0 ; i < _rate.length;i++){
             SPTrate.push(_rate[i]);
          }
+         initedSptRatio = true;
+
     }
+    function setSptRatio(uint256 _id, uint256 _rate) public onlyOwner {
+        SPTrate[_id] = _rate;
+    }
+
+    
   
     function setSvt(address _svt)public onlyOwner {
         svt = _svt;
@@ -1719,7 +1728,7 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
 
     }
     function addInviteSrtRatio(uint256[] memory _rate) public onlyOwner{
-        require(_rate.length == 2);
+        require(_rate.length == 2 );
         for(uint256 i =0; i < _rate.length; i++){
         inviteSrtRatio[i] = _rate[i];
         }
@@ -1799,7 +1808,14 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
         supAccountUsedAmount[_supAccountAddress] = supAccountUsedAmount[_supAccountAddress].add(1);
         emit allRegister(registerId,_supAccountAddress,msg.sender);
         registerId++;
+        
     }
+    // function getUserTotalLockAmount(address _user) public view returns(uint256){
+
+    //     uint256 total = 0;
+    //     for(uint256 i = 0 ;  i< )
+
+    // }
     function CanClaimSrt(address _user) public view returns(uint256){
         uint256 total = 0;
         for(uint256 i = 0 ; i < userSrtOrderInfos[_user].length;i++){
@@ -1877,11 +1893,15 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
                     TransferHelper.safeTransferFrom(usdt,msg.sender,userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(10000));
                         }
                         for(uint256 i = 0 ; i <invitationLevel; i++){
+                            if(invite[i] == address(0)){
+                                break;
+                            }else{
                             ISPT(spt).mint(invite[i], fee.mul(SPTrate[i].div(10000)).mul(1e12));
+                            }
                         }
         ISVT(svt).mint(msg.sender,svtAmount);
-        TransferHelper.safeTransfer(address(sbd),msg.sender, sbdAmount );
-        TransferHelper.safeTransfer(address(sbd),ogLock, sbdAmount );
+        TransferHelper.safeTransfer(address(sbd),msg.sender, sbdAmount.div(10).mul(2) );
+        TransferHelper.safeTransfer(address(sbd),ogLock, sbdAmount.div(10).mul(8) );
         IOgLock(ogLock).lock(msg.sender,svtAmount);
         userTotalBuy[msg.sender] = userTotalBuy[msg.sender].add(fee);
         totalDonate = totalDonate.add(fee);

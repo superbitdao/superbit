@@ -415,7 +415,7 @@ interface ISPT{
     function getTimestamps(address _user) external view returns(uint256[] memory );
     function getSptAmount(address _user, uint256 _time) external view returns(uint256);
 }
-contract dividend is Ownable{
+contract dividend is Ownable {
     using SafeMath for uint256;
     IUniswapV2Router02 public uniswapV2Router;
     uint256[] private poolTime;
