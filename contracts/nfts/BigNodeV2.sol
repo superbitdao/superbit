@@ -2274,7 +2274,7 @@ contract BigNodeV2 is ERC721,Ownable,ReentrancyGuard{
 
     constructor() ERC721("BigNodeV2", "BigNodeV2"){
     baseURI = "https://bafybeicv233buylf63b7hfkum2v6wzddfnpe5lb2qdymgf2v6hdb3kpytq.ipfs.nftstorage.link/";
-    initAmount = 300;
+    initAmount = 500;
 }
     function getStatus()external view returns(bool){
         if(initAmount == totalMint){
@@ -2325,7 +2325,10 @@ contract BigNodeV2 is ERC721,Ownable,ReentrancyGuard{
         _idTracker.increment();
         totalMint ++;
     }
-
+   function burnNFT(uint256 _tokenId) external{
+        require(allowAddr[msg.sender], "NO ACCESS");
+        _burn(_tokenId);
+    }
 
     function setBaseURI(string memory baseURI_) external onlyOwner {
         baseURI = baseURI_;

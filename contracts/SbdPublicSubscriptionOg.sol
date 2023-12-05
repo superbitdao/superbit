@@ -1420,8 +1420,8 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
     uint256[] public validNumbers =
     [
         200000000000000000000,
-        500000000000000000000,
-        1000000000000000000000,
+        500000000000000000000 ,
+        1000000000000000000000 ,
         2000000000000000000000,
         5000000000000000000000,
         10000000000000000000000
@@ -1503,7 +1503,9 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
         setNftType(5000,_bigNode);
         setNftType(10000,_supNode);
 	}
-
+    function setTimeInterval(uint256 _time) public onlyOwner{
+        timeInterval = _time;
+    }
     function setSptAddress(address _spt) public onlyOwner {
         spt = _spt;
     }
@@ -1810,12 +1812,15 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
         registerId++;
         
     }
-    // function getUserTotalLockAmount(address _user) public view returns(uint256){
+    function getUserTotalLockAmount(address _user) public view returns(uint256){
 
-    //     uint256 total = 0;
-    //     for(uint256 i = 0 ;  i< )
+        uint256 total = 0;
+        for(uint256 i = 0 ;  i< userSrtOrderInfos[_user].length;i++){
+            total = total.add(userSrtOrderInfos[_user][i].amount);
+        }
+        return total;
 
-    // }
+    }
     function CanClaimSrt(address _user) public view returns(uint256){
         uint256 total = 0;
         for(uint256 i = 0 ; i < userSrtOrderInfos[_user].length;i++){
@@ -1824,12 +1829,16 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
             }
             if(block.number > userSrtOrderInfos[_user][i].time && block.number < userSrtOrderInfos[_user][i].endTime){
                 uint256 OneBlockReward = userSrtOrderInfos[_user][i].startAmount.div(userSrtOrderInfos[_user][i].endTime.sub(userSrtOrderInfos[_user][i].startTime));
-                total = total.add((block.number.sub(userSrtOrderInfos[_user][i].time)).mul(OneBlockReward));
+                uint256 perReward = (block.number.sub(userSrtOrderInfos[_user][i].time)).mul(OneBlockReward);
+                if(perReward >= userSrtOrderInfos[_user][i].amount){
+                    perReward = userSrtOrderInfos[_user][i].amount;
+                }
+                total = total.add(perReward);
             }
         }
         return total;
     }
-     function ClaimSrt(address _user) public {
+     function ClaimSrt(address _user) public nonReentrant {
              uint256 total = 0;
         for(uint256 i = 0 ; i < userSrtOrderInfos[_user].length;i++){
             if(userSrtOrderInfos[_user][i].amount == 0){
@@ -1838,9 +1847,14 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
             if(block.number > userSrtOrderInfos[_user][i].time && block.number < userSrtOrderInfos[_user][i].endTime){
                 uint256 OneBlockReward = userSrtOrderInfos[_user][i].startAmount.div(userSrtOrderInfos[_user][i].endTime.sub(userSrtOrderInfos[_user][i].startTime));
                 uint256 perReward = (block.number.sub(userSrtOrderInfos[_user][i].time)).mul(OneBlockReward);
+                if(perReward >= userSrtOrderInfos[_user][i].amount){
+                    perReward = userSrtOrderInfos[_user][i].amount;
+                    userSrtOrderInfos[_user][i].amount = 0;
+                }else{
+                userSrtOrderInfos[_user][i].amount = userSrtOrderInfos[_user][i].amount.sub(perReward);
+                }
                 total = total.add(perReward);
                 userSrtOrderInfos[_user][i].time = block.number;
-                userSrtOrderInfos[_user][i].amount = userSrtOrderInfos[_user][i].amount.sub(perReward);
             }
         }
         TransferHelper.safeTransfer(srt, _user,total);
@@ -1900,8 +1914,8 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
                             }
                         }
         ISVT(svt).mint(msg.sender,svtAmount);
-        TransferHelper.safeTransfer(address(sbd),msg.sender, sbdAmount.div(10).mul(2) );
-        TransferHelper.safeTransfer(address(sbd),ogLock, sbdAmount.div(10).mul(8) );
+        TransferHelper.safeTransfer(address(sbd),msg.sender, sbdAmount );
+        TransferHelper.safeTransfer(address(sbd),ogLock, svtAmount);
         IOgLock(ogLock).lock(msg.sender,svtAmount);
         userTotalBuy[msg.sender] = userTotalBuy[msg.sender].add(fee);
         totalDonate = totalDonate.add(fee);

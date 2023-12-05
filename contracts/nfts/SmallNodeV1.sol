@@ -2255,7 +2255,7 @@ abstract contract ReentrancyGuard {
 
 pragma solidity ^0.8.0;
 
-contract SmallNodeV2 is ERC721,Ownable,ReentrancyGuard{
+contract SmallNodeV1 is ERC721,Ownable,ReentrancyGuard{
 
     using SafeMath for uint256;
     using Counters for Counters.Counter;
@@ -2271,7 +2271,7 @@ contract SmallNodeV2 is ERC721,Ownable,ReentrancyGuard{
     mapping(address => bool) public allowAddr;
     mapping(address => bool) public Casted;
     event record(uint256 id,address addr);
-    constructor() ERC721("SmallNodeV2", "SmallNodeV2"){
+    constructor() ERC721("SmallNodeV1", "SmallNodeV1"){
     baseURI = "https://bafybeid3egoof4ierq5e7uqm5av3hbgdypju4qehieyw4leawlclhnaclq.ipfs.nftstorage.link/";
     initAmount = 900;
 }
@@ -2324,10 +2324,7 @@ contract SmallNodeV2 is ERC721,Ownable,ReentrancyGuard{
         _idTracker.increment();
         totalMint ++;
     }
-   function burnNFT(uint256 _tokenId) external{
-        require(allowAddr[msg.sender], "NO ACCESS");
-        _burn(_tokenId);
-    }
+
     function setBaseURI(string memory baseURI_) external onlyOwner {
         baseURI = baseURI_;
     }

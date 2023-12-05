@@ -458,24 +458,32 @@ contract ogLock is Ownable {
 using SafeMath for uint256;
     struct LockInfo{
         address user;
+        uint256 startAmount;
         uint256 amount;
-        uint256 lockBlock;
+        uint256 time;
+        uint256 startlockBlock;
+        uint256 endLockTime;
         uint256 startTime;
+        uint256 endTime;
     }
     IERC20 sbd;
     
     uint256 withdrawId;
     address public  svt;
     uint256 public oneYear;
-    uint256 public intervalTime  =5;
+    uint256 public oneDay = 86400;
+    uint256 public intervalTime  = 13;
     mapping(address => bool) public allowAddr;
     mapping(address => LockInfo[]) public userLockInfos;
     mapping(address => uint256 ) public notExtracted;
     event withdrawRecord(uint256 id, address user, uint256 amount,uint256 burn );
     constructor (){
-        oneYear = 31536000;
+        oneYear =  oneDay.mul(365).div(intervalTime);
         withdrawId = 1;
 
+    }
+    function setTimeInterval(uint256 _time) public onlyOwner{
+        intervalTime = _time;
     }
     function setSbd(IERC20 _sbd) public onlyOwner {
         sbd = _sbd;
@@ -490,24 +498,38 @@ using SafeMath for uint256;
         require(allowAddr[msg.sender]);
             LockInfo memory _lockInfo = LockInfo({
             user:_user,
+            startAmount:_svtAmount,
             amount:_svtAmount,
-            lockBlock:block.number,
-            startTime:block.timestamp
+            time: block.number,
+            startlockBlock:block.number,
+            endLockTime:block.number.add(oneYear),
+            startTime:block.timestamp,
+            endTime:block.timestamp.add(oneYear.mul(intervalTime))
+
         });
         userLockInfos[_user].push(_lockInfo);
 
     }
         function getUserCanClaim(address _user) public view returns(uint256) {
         uint256 total = 0;
-        for(uint256 i = 0 ; i<getUserLockLength(_user);i++){
-            total = total.add(userLockInfos[_user][i].amount.mul(block.number.sub(userLockInfos[_user][i].lockBlock)).div(oneYear.div(intervalTime)));
+        for(uint256 i = 0 ; i<userLockInfos[_user].length;i++){
+            if(userLockInfos[_user][i].amount ==0){
+                continue;
+            }
+            uint256 OneBlockReward = userLockInfos[_user][i].startAmount.div(userLockInfos[_user][i].endLockTime.sub(userLockInfos[_user][i].startlockBlock));
+            uint256 perReward = (block.number.sub(userLockInfos[_user][i].time)).mul(OneBlockReward);
+            total = total.add(perReward);}
+        if(notExtracted[_user]> 0){
+            return total.add(notExtracted[_user]);
+        }else{
+            return total;
         }
-        return total.add(notExtracted[_user]);
     }
     function Claim(uint256 amount) public  {
         require(getUserCanClaim(msg.sender) >= amount && getContractSbdBalance() >= amount);
         require(amount > 0);
         uint256 totalTransfer = 0;
+        uint256 buffer = 0;
         if(notExtracted[msg.sender] >=  amount){
             notExtracted[msg.sender] = notExtracted[msg.sender].sub(amount);
             TransferHelper.safeTransfer(address(sbd), msg.sender,amount);
@@ -516,28 +538,34 @@ using SafeMath for uint256;
             return;
         }
         if(notExtracted[msg.sender] <  amount && notExtracted[msg.sender] > 0){
-            TransferHelper.safeTransfer(address(sbd), msg.sender,notExtracted[msg.sender]);
-
-            ISVT(svt).burn(msg.sender,notExtracted[msg.sender]);
+            buffer = notExtracted[msg.sender];
             notExtracted[msg.sender] = 0;
             amount = amount.sub(notExtracted[msg.sender]);
         }
-        for(uint256 i = 0 ; i<getUserLockLength(msg.sender);i++){
+        for(uint256 i = 0 ; i<userLockInfos[msg.sender].length;i++){
             if(userLockInfos[msg.sender][i].amount == 0 ){
                 continue;
             }
-            uint256 claimAmount =  userLockInfos[msg.sender][i].amount.mul(block.number.sub(userLockInfos[msg.sender][i].lockBlock)).div(oneYear.div(intervalTime));
-            totalTransfer = totalTransfer.add(claimAmount);
-            userLockInfos[msg.sender][i].amount = userLockInfos[msg.sender][i].amount.sub(claimAmount);
-            userLockInfos[msg.sender][i].lockBlock = block.number;
+            uint256 OneBlockReward = userLockInfos[msg.sender][i].startAmount.div(userLockInfos[msg.sender][i].endLockTime.sub(userLockInfos[msg.sender][i].startlockBlock));
+            uint256 perReward = (block.number.sub(userLockInfos[msg.sender][i].time)).mul(OneBlockReward);
+            if(perReward >= userLockInfos[msg.sender][i].amount){
+                perReward = userLockInfos[msg.sender][i].amount;
+                userLockInfos[msg.sender][i].amount = 0;
+            }else{
+            userLockInfos[msg.sender][i].amount = userLockInfos[msg.sender][i].amount.sub(perReward);
+
+            }
+            totalTransfer = totalTransfer.add(perReward);
+            userLockInfos[msg.sender][i].time = block.number;
             if(totalTransfer >= amount){
-                TransferHelper.safeTransfer(address(sbd), msg.sender,amount);
-                ISVT(svt).burn(msg.sender,amount);
-                amount = amount.add(notExtracted[msg.sender]);
+                TransferHelper.safeTransfer(address(sbd), msg.sender,amount.add(buffer));
+                ISVT(svt).burn(msg.sender,amount.add(buffer));
                 notExtracted[msg.sender] = totalTransfer.sub(amount);
                 emit withdrawRecord(withdrawId, msg.sender, amount,amount);
                 withdrawId++;
                 break;
+        }else{
+            revert("Insufficient amount to be withdrawn");
         }
     }
   

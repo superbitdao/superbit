@@ -2255,7 +2255,7 @@ abstract contract ReentrancyGuard {
 
 pragma solidity ^0.8.0;
 
-contract SmallNodeV2 is ERC721,Ownable,ReentrancyGuard{
+contract SupNodeV1 is ERC721,Ownable,ReentrancyGuard{
 
     using SafeMath for uint256;
     using Counters for Counters.Counter;
@@ -2264,25 +2264,27 @@ contract SmallNodeV2 is ERC721,Ownable,ReentrancyGuard{
     Counters.Counter private _idTracker;
     EnumerableSet.AddressSet private whiteList;
     uint256 public totalMint;
-    
     string public baseURI;
     string public baseExtension = ".json";
     uint256 public initAmount;
     mapping(address => bool) public allowAddr;
     mapping(address => bool) public Casted;
+
     event record(uint256 id,address addr);
-    constructor() ERC721("SmallNodeV2", "SmallNodeV2"){
-    baseURI = "https://bafybeid3egoof4ierq5e7uqm5av3hbgdypju4qehieyw4leawlclhnaclq.ipfs.nftstorage.link/";
-    initAmount = 900;
-}
-   function getStatus()external view returns(bool){
+
+    constructor() ERC721("SupNodeV1", "SupNodeV1"){
+    baseURI = "https://bafybeihewbk2b3czyurbv5anzh6ylqean7qikxhphzaxvckvquswvg7t4q.ipfs.nftstorage.link/";
+    initAmount = 100;
+     
+}   function getStatus()external view returns(bool){
         if(initAmount == totalMint){
             return false;
         }
         return true;
     }
+
     //onlyOwner
-      function setInitAmount(uint256 _amount) public onlyOwner {
+    function setInitAmount(uint256 _amount) public onlyOwner {
         initAmount = _amount;
     }
     function addWhiteListUser(address[] memory _users) public onlyOwner {
@@ -2293,40 +2295,36 @@ contract SmallNodeV2 is ERC721,Ownable,ReentrancyGuard{
     }
     function removeFromWhiteList(address[] memory _users) public onlyOwner{
         for(uint256 i = 0 ; i< _users.length; i++){
-            require(checkIsNotWhiteListUser(_users[i]), "SmallNode: User not in whitelist");
+            require(checkIsNotWhiteListUser(_users[i]), "SupNode: User not in whitelist");
             whiteList.remove(_users[i]);
         }
     }
       function checkIsNotWhiteListUser(address _address) internal view returns(bool){
         return whiteList.contains(_address);
     }
-    function getWiteList() public view returns(address[] memory){
+       function getWiteList() public view returns(address[] memory){
         return whiteList.values();
     }
     function setAllowAddr(address _to, bool _set) public onlyOwner {
         allowAddr[_to] = _set;
     }
-    function mintSmallNode(address _to) external {
-        require(allowAddr[msg.sender], "the address no access");
+    function mintSupNode(address _to) external {
+        require( allowAddr[msg.sender], "the address no access");
         require(_idTracker.current() <= initAmount,"over limit");
         _mint(_to, _idTracker.current());
         emit record(_idTracker.current(),_to );
         _idTracker.increment();
         totalMint ++;
     }
-    function mintForWhiteList() public {
+      function mintForWhiteList() public {
         require(checkIsNotWhiteListUser(msg.sender) && !Casted[msg.sender],"the white User only mint one");
         require(_idTracker.current() <= initAmount,"over limit");
 
         Casted[msg.sender] = true;
         _mint(msg.sender, _idTracker.current());
-        emit record(_idTracker.current(),msg.sender);
+        emit record(_idTracker.current(),msg.sender );
         _idTracker.increment();
         totalMint ++;
-    }
-   function burnNFT(uint256 _tokenId) external{
-        require(allowAddr[msg.sender], "NO ACCESS");
-        _burn(_tokenId);
     }
     function setBaseURI(string memory baseURI_) external onlyOwner {
         baseURI = baseURI_;
