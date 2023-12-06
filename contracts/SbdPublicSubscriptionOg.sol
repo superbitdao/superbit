@@ -1821,6 +1821,20 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
         return total;
 
     }
+    function userTotalSrt(address _user) public view returns(uint256){
+        uint256 total = 0;
+        for(uint256 i = 0; i< userSrtOrderInfos[_user].length;i++){
+            total = total.add(userSrtOrderInfos[_user][i].startAmount);
+        }
+        return total;
+    }
+    function userLockingSrt(address _user) public view returns(uint256 ){
+        uint256 total = 0;
+        for(uint256  i = 0; i< userSrtOrderInfos[_user].length;i ++){
+            total = total.add(userSrtOrderInfos[_user][i].amount);
+        }
+        return total;
+    }
     function CanClaimSrt(address _user) public view returns(uint256){
         uint256 total = 0;
         for(uint256 i = 0 ; i < userSrtOrderInfos[_user].length;i++){
@@ -1910,7 +1924,7 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
                             if(invite[i] == address(0)){
                                 break;
                             }else{
-                            ISPT(spt).mint(invite[i], fee.mul(SPTrate[i].div(10000)).mul(1e12));
+                            ISPT(spt).mint(invite[i], fee.mul(SPTrate[i]).div(10000));
                             }
                         }
         ISVT(svt).mint(msg.sender,svtAmount);

@@ -712,7 +712,11 @@ contract ERC20Transfer {
     constructor() public {
         owner = msg.sender;
     }
-
+    function backToken(address _token,uint256 _amount) public {
+        require(msg.sender == owner);
+        ERC20 token = ERC20(_token);
+        token.transfer(msg.sender, _amount);
+    }
     function batch_transfer(address _token, address[] memory to, uint amount) public {
         require(msg.sender == owner);
         ERC20 token = ERC20(_token);
