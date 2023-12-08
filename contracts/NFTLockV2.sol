@@ -43,6 +43,12 @@ interface INFTcertificat{
     function mintCertificate(address _user) external;
     function burnCertificate(address _user,uint256 _id) external;
 }
+interface IV3NFT{
+      function mint(address _to) external ;
+}
+interface INft{
+       function burnNFT(uint256 _tokenId) external;
+}
 contract NFTcertificat is ERC721,Ownable{
     uint256 private _tokenId;
     mapping(address =>bool) public powerAddr;
@@ -69,7 +75,8 @@ contract NFTLock is Ownable,ReentrancyGuard{
         uint256 tokenId;
         address user;
         address nft;
-        uint256 power;
+        uint256 startAmount;
+        uint256 amount;
         uint256 startTimeBlock;
     }
     uint256[] public reward;
@@ -97,18 +104,19 @@ contract NFTLock is Ownable,ReentrancyGuard{
     mapping(address => uint256 ) public accSrtPerShare;
     mapping(address => uint256 ) public userPower;
     mapping(address => uint256 ) public rewardDebt;
-    mapping(address => uint256 ) public nftPower;
     mapping(address => lockInfo[]) public userLockInfos;
+    mapping(address => address) public nftToV3;
     mapping(address => uint256 ) public userTotalLock;
     event lockRecord(address user, string  nft, uint256 tokenId, uint256 power);
     event unLockRecord(address user, string nft, uint256 tokenId, uint256 power);
     event claimSrtRecord(address user, uint256 amount);
     event adminDeposit(address admin,address token, uint256 amount);
     event adminWithdraw(address admin,address token, uint256 amount);
-    constructor(address _srt,address _supNft, address _bigNft, address _smallNft,address _NFTcertificat) {
-        nftPower[_supNft] = 10;
-        nftPower[_bigNft] = 3;
-        nftPower[_smallNft] = 1;
+    constructor(address _srt,address _supNft, address _bigNft, address _smallNft,address _NFTcertificat,address _supNftV3,address _bigNftV3,address _smallNftV3) {
+
+        nftToV3[_supNft]= _supNftV3;
+        nftToV3[_bigNft] = _bigNftV3;
+        nftToV3[_smallNft] =_smallNftV3;
         srt = _srt;
         supNft = _supNft;
         bigNft = _bigNft;
@@ -118,9 +126,7 @@ contract NFTLock is Ownable,ReentrancyGuard{
     function setSrt(address _srt) public onlyOwner {
         srt = _srt;
     }
-    function setPower(address _node, uint256 _power) public onlyOwner{
-        nftPower[_node] = _power;
-    }
+ 
     function deposit(uint256 _amount,uint256 _rewardTime) public onlyOwner {
         uint256 currentTime = block.timestamp;
         reward.push(_amount);
@@ -177,7 +183,9 @@ contract NFTLock is Ownable,ReentrancyGuard{
         rewardDebt[msg.sender] = userPower[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
         if(_nft == 1) {
             require(IERC721(smallNft).balanceOf(msg.sender) != 0,"You do not have a small node NFT");
-            IERC721(smallNft).transferFrom(msg.sender, address(this),_tokenId);
+            // IERC721(smallNft).transferFrom(msg.sender, address(this),_tokenId);
+            INft(smallNft).burnNFT(_tokenId);
+            IV3NFT(nftToV3[smallNft]).mint(msg.sender);
             lockInfo memory _info = lockInfo({
                 tokenId: _tokenId,
                 user: msg.sender,
@@ -195,7 +203,9 @@ contract NFTLock is Ownable,ReentrancyGuard{
             emit lockRecord(msg.sender, "SMALL_Node_NFT",_tokenId, nftPower[smallNft]);
         }else if(_nft == 2) {
             require(IERC721(bigNft).balanceOf(msg.sender) != 0,"You do not have a small node NFT");
-            IERC721(bigNft).transferFrom(msg.sender, address(this),_tokenId);
+            // IERC721(bigNft).transferFrom(msg.sender, address(this),_tokenId);
+            INft(bigNft).burnNFT(_tokenId);
+            IV3NFT(nftToV3[bigNft]).mint(msg.sender);
             lockInfo memory _info = lockInfo({
                 tokenId: _tokenId,
                 user: msg.sender,
@@ -216,7 +226,9 @@ contract NFTLock is Ownable,ReentrancyGuard{
 
         }else if(_nft ==3){
             require(IERC721(supNft).balanceOf(msg.sender) != 0,"You do not have a small node NFT");
-            IERC721(supNft).transferFrom(msg.sender, address(this),_tokenId);
+            // IERC721(supNft).transferFrom(msg.sender, address(this),_tokenId);
+            INft(supNft).burnNFT(_tokenId);
+            IV3NFT(nftToV3[supNft]).mint(msg.sender);
             lockInfo memory _info = lockInfo({
                 tokenId: _tokenId,
                 user: msg.sender,
@@ -280,74 +292,74 @@ contract NFTLock is Ownable,ReentrancyGuard{
         userLockInfos[_user].pop();
     }
 
-    function withdrawNft(uint256 _nftClass , uint256 _tokenId,uint256 _INFTcertificatId ) public  nonReentrant{
-        uint256 bufferStatus = 0;
-        updatePower(msg.sender);
-            uint256 pending = userPower[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12).sub(rewardDebt[msg.sender]);
-            safeSrtTransfer(msg.sender, pending);
-            rewardDebt[msg.sender] = userPower[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
+    // function withdrawNft(uint256 _nftClass , uint256 _tokenId,uint256 _INFTcertificatId ) public  nonReentrant{
+    //     uint256 bufferStatus = 0;
+    //     updatePower(msg.sender);
+    //         uint256 pending = userPower[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12).sub(rewardDebt[msg.sender]);
+    //         safeSrtTransfer(msg.sender, pending);
+    //         rewardDebt[msg.sender] = userPower[msg.sender].mul(accSrtPerShare[msg.sender]).div(1e12);
 
-        if(_nftClass == 1){
-            require(IERC721(smallNft).balanceOf(address(this)) != 0 ," do not have a small node NFT");
-            for(uint256 i =0 ; i < userLockInfos[msg.sender].length; i++){
-                require(
-                smallNft == userLockInfos[msg.sender][i].nft &&
-                _tokenId == userLockInfos[msg.sender][i].tokenId ,
-                "You don t have this small Node NFT");
-                bufferStatus = i;
-            } 
-            userLockInfos[msg.sender][bufferStatus] = userLockInfos[msg.sender][userLockInfos[msg.sender].length - 1];
-            userLockInfos[msg.sender].pop();
-            IERC721(smallNft).safeTransferFrom(address(this),msg.sender,_tokenId);
-            totalPower = totalPower.sub(nftPower[smallNft]);
-            userPower[msg.sender] = userPower[msg.sender].sub(nftPower[smallNft]);
-            userSmallNftAmount[msg.sender] = userSmallNftAmount[msg.sender].sub(1);
-            SmallNftAmount=SmallNftAmount.sub(1);
-            INFTcertificat(NFTcertificatAddr).burnCertificate(msg.sender,_INFTcertificatId);
+    //     if(_nftClass == 1){
+    //         require(IERC721(smallNft).balanceOf(address(this)) != 0 ," do not have a small node NFT");
+    //         for(uint256 i =0 ; i < userLockInfos[msg.sender].length; i++){
+    //             require(
+    //             smallNft == userLockInfos[msg.sender][i].nft &&
+    //             _tokenId == userLockInfos[msg.sender][i].tokenId ,
+    //             "You don t have this small Node NFT");
+    //             bufferStatus = i;
+    //         } 
+    //         userLockInfos[msg.sender][bufferStatus] = userLockInfos[msg.sender][userLockInfos[msg.sender].length - 1];
+    //         userLockInfos[msg.sender].pop();
+    //         IERC721(smallNft).safeTransferFrom(address(this),msg.sender,_tokenId);
+    //         totalPower = totalPower.sub(nftPower[smallNft]);
+    //         userPower[msg.sender] = userPower[msg.sender].sub(nftPower[smallNft]);
+    //         userSmallNftAmount[msg.sender] = userSmallNftAmount[msg.sender].sub(1);
+    //         SmallNftAmount=SmallNftAmount.sub(1);
+    //         INFTcertificat(NFTcertificatAddr).burnCertificate(msg.sender,_INFTcertificatId);
 
-            emit unLockRecord(msg.sender, "SMALL_NODE_NFT",_tokenId, nftPower[smallNft]);
-        }else if(_nftClass == 2) {
-     require(IERC721(bigNft).balanceOf(address(this)) != 0 ," do not have a big node NFT");
-            for(uint256 i =0 ; i< userLockInfos[msg.sender].length; i++){
-                require(
+    //         emit unLockRecord(msg.sender, "SMALL_NODE_NFT",_tokenId, nftPower[smallNft]);
+    //     }else if(_nftClass == 2) {
+    //  require(IERC721(bigNft).balanceOf(address(this)) != 0 ," do not have a big node NFT");
+    //         for(uint256 i =0 ; i< userLockInfos[msg.sender].length; i++){
+    //             require(
                
-                bigNft == userLockInfos[msg.sender][i].nft &&
-                _tokenId == userLockInfos[msg.sender][i].tokenId,
-                "You don t have this Big Node NFT");
-                bufferStatus = i;
+    //             bigNft == userLockInfos[msg.sender][i].nft &&
+    //             _tokenId == userLockInfos[msg.sender][i].tokenId,
+    //             "You don t have this Big Node NFT");
+    //             bufferStatus = i;
 
-            }
-            deleteNft(msg.sender,bufferStatus );
-            IERC721(bigNft).safeTransferFrom(address(this),msg.sender,_tokenId);
-            totalPower = totalPower.sub(nftPower[bigNft]);
-            userPower[msg.sender] = userPower[msg.sender].sub(nftPower[bigNft]);
-            userBigNftAmount[msg.sender] = userBigNftAmount[msg.sender].sub(1);
-            BigNftAmount = BigNftAmount.sub(1);
-            INFTcertificat(NFTcertificatAddr).burnCertificate(msg.sender,_INFTcertificatId);
+    //         }
+    //         deleteNft(msg.sender,bufferStatus );
+    //         IERC721(bigNft).safeTransferFrom(address(this),msg.sender,_tokenId);
+    //         totalPower = totalPower.sub(nftPower[bigNft]);
+    //         userPower[msg.sender] = userPower[msg.sender].sub(nftPower[bigNft]);
+    //         userBigNftAmount[msg.sender] = userBigNftAmount[msg.sender].sub(1);
+    //         BigNftAmount = BigNftAmount.sub(1);
+    //         INFTcertificat(NFTcertificatAddr).burnCertificate(msg.sender,_INFTcertificatId);
 
-            emit unLockRecord(msg.sender, "BIG_NODE_NFT",_tokenId, nftPower[bigNft]);
+    //         emit unLockRecord(msg.sender, "BIG_NODE_NFT",_tokenId, nftPower[bigNft]);
 
-        }else if(_nftClass == 3){ 
-     require(IERC721(supNft).balanceOf(address(this)) != 0 ," do not have a sup node NFT");
-            for(uint256 i =0 ; i< userLockInfos[msg.sender].length; i++){
-                require(
-                supNft == userLockInfos[msg.sender][i].nft &&
-                _tokenId == userLockInfos[msg.sender][i].tokenId ,
-                "You don t have this Sup Node NFT");
-                bufferStatus = i;
-            }
-            deleteNft(msg.sender,bufferStatus );
-            IERC721(supNft).safeTransferFrom(address(this),msg.sender,_tokenId);
-            totalPower = totalPower.sub(nftPower[supNft]);
-            userPower[msg.sender] = userPower[msg.sender].sub(nftPower[supNft]);
-            userSupNftAmount[msg.sender] = userSupNftAmount[msg.sender].sub(1);
-            SupNftAmount = SupNftAmount.sub(1);
-            INFTcertificat(NFTcertificatAddr).burnCertificate(msg.sender,_INFTcertificatId);
+    //     }else if(_nftClass == 3){ 
+    //  require(IERC721(supNft).balanceOf(address(this)) != 0 ," do not have a sup node NFT");
+    //         for(uint256 i =0 ; i< userLockInfos[msg.sender].length; i++){
+    //             require(
+    //             supNft == userLockInfos[msg.sender][i].nft &&
+    //             _tokenId == userLockInfos[msg.sender][i].tokenId ,
+    //             "You don t have this Sup Node NFT");
+    //             bufferStatus = i;
+    //         }
+    //         deleteNft(msg.sender,bufferStatus );
+    //         IERC721(supNft).safeTransferFrom(address(this),msg.sender,_tokenId);
+    //         totalPower = totalPower.sub(nftPower[supNft]);
+    //         userPower[msg.sender] = userPower[msg.sender].sub(nftPower[supNft]);
+    //         userSupNftAmount[msg.sender] = userSupNftAmount[msg.sender].sub(1);
+    //         SupNftAmount = SupNftAmount.sub(1);
+    //         INFTcertificat(NFTcertificatAddr).burnCertificate(msg.sender,_INFTcertificatId);
 
-            emit unLockRecord(msg.sender, "SUP_NODE_NFT",_tokenId, nftPower[supNft]);
+    //         emit unLockRecord(msg.sender, "SUP_NODE_NFT",_tokenId, nftPower[supNft]);
 
-        }
-    }
+    //     }
+    // }
     function safeSrtTransfer(address _to, uint256 _amount) internal {
         uint256 srtBal = IERC20(srt).balanceOf(address(this));
           if (_amount > srtBal) {

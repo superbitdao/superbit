@@ -197,7 +197,7 @@ mintNew[_smallNode] = _smallnode1;
  function mintToNew(address addr1,address addr2) public onlyOwner{
 mintNew[addr1] = addr2;
  }
-function staking(address _nft,uint256 _id) public {
+function staking(address _nft,uint256 _id) public  {
     require(nftToReward[_nft] != 0 , "plz input current nft address");
     require(IERC721(_nft).balanceOf(msg.sender) >0);
     require(IERC721(_nft).ownerOf(_id) == msg.sender);

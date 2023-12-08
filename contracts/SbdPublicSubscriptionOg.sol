@@ -1978,11 +1978,11 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
     function getAdminsLevelOneLength( address _user) public view returns( uint256 ) {
         return setAdminLevelTwo_[_user].length;
     }
-    function getAdminsLevelTwoLength(address _adminTwo) public view returns(uint256 ) {
-        return setAdminLevelThree_[_adminTwo].length;
+    function getAdminsLevelTwoLength(address _admin) public view returns(uint256 ) {
+        return setAdminLevelTwo_[_admin].length;
     }
-     function getAdminsLevelThreeLength(address _adminThree) public view returns(uint256) {
-        return setAdminLevelThree_[_adminThree].length;
+     function getAdminsLevelThreeLength(address _adminTwo) public view returns(uint256) {
+        return setAdminLevelThree_[_adminTwo].length;
     }
   
     function receiveSbd(uint256 _usdtAmount) public view returns(uint256 ){

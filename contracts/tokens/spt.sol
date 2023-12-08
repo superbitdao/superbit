@@ -381,21 +381,29 @@ library EnumerableSet {
 pragma solidity  =0.8.18;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
+interface IDividendV2{
+    function getStartDividendTime()external view returns(uint256 );
+}
 contract SPT is ERC20 {
     using EnumerableSet for EnumerableSet.AddressSet;
     EnumerableSet.AddressSet private dividendUser;
     address admin;
+    address public dividendAddress;
     mapping(address =>bool ) public access;
     mapping(address =>  uint256[]) public timestamps;
     mapping(address =>mapping(uint256 => uint256) )public timeToValue;
     event record(address user, uint256 amount,uint256 blockTime);
-    constructor () ERC20("SPT","SPT"){
+    constructor (address _address) ERC20("SPT","SPT"){
         admin = msg.sender;
+        dividendAddress =_address;
+
     }
     modifier onlyAdmin{
         require(msg.sender == admin,"no access ");
         _;
+    }
+    function setDividendAddress(address _address)public onlyAdmin{
+        dividendAddress = _address;
     }
     function setAccess(address _to ,bool _bool) public onlyAdmin{
         access[_to] =_bool;
@@ -403,14 +411,14 @@ contract SPT is ERC20 {
     function mint(address _to,uint256 _amount) external{
         require(access[msg.sender],"NO ACCESS");
         uint256 time = block.timestamp;
+        uint256 blockTime = IDividendV2(dividendAddress).getStartDividendTime();
         _mint(_to,_amount);
         timeToValue[_to][time] = _amount;
         timestamps[_to].push(time);
-
         if(!IsNotUserExit(_to)){
             dividendUser.add(_to);
         }
-        emit record(_to, _amount,time);
+        emit record(_to, _amount,blockTime);
     }
 function getUserTimeLength(address _user) external view returns(uint256){
     return timestamps[_user].length;

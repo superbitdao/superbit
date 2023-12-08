@@ -420,7 +420,6 @@ contract dividend is Ownable {
     IUniswapV2Router02 public uniswapV2Router;
     uint256[] private poolTime;
     bool public init;
-    bool public status;
     uint256 public initStartTime;
     uint256 public bufferTime;
     uint256 public startDividendTime;
@@ -431,14 +430,24 @@ contract dividend is Ownable {
     address public usdt;
     mapping(uint256  => uint256 )public poolAmount;
     event BonusRecord(address operate, address _to, uint256 _amount, uint256 _threshold, uint256 period, uint256 bonusAmount);
-    constructor(ERC20 _rewardToken,address _spt,address _usdt){
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    constructor(ERC20 _rewardToken,address _usdt,address _router){
+        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(_router);
         uniswapV2Router = _uniswapV2Router;
         rewardToken = _rewardToken;
         usdt = _usdt;
-        spt = _spt;
         cycle = 604800;
         bufferTime = 86400;
+    }
+    function setSpt(address _spt) public onlyOwner{
+        spt = _spt;
+
+    }
+    function setRouter(address _router) public onlyOwner{
+    IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(_router);
+    uniswapV2Router = _uniswapV2Router;
+    }
+    function getStartDividendTime()external view returns(uint256 ){
+        return startDividendTime;
     }
     function setBufferTime(uint256 _bufferTime) public onlyOwner{
         bufferTime = _bufferTime;
@@ -474,7 +483,6 @@ contract dividend is Ownable {
     }
   
     function dividendToken()public {
-        require(status,"plz update");
         require(block.timestamp - startDividendTime >= cycle && block.timestamp - startDividendTime < cycle + bufferTime,"The time for dividends has not come yet");
         uint256 contractTokenBalance ;
             contractTokenBalance = IERC20(rewardToken).balanceOf(address(this));
