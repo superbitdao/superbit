@@ -419,16 +419,18 @@ contract dividend is Ownable {
     using SafeMath for uint256;
     IUniswapV2Router02 public uniswapV2Router;
     uint256[] private poolTime;
-
+    bool public init;
     bool public status;
+    uint256 public initStartTime;
+    uint256 public bufferTime;
     uint256 public startDividendTime;
     uint256 public cycle;
     address public spt;
     uint256 public rewardThreshold;
     ERC20 public rewardToken;
     address public usdt;
-
     mapping(uint256  => uint256 )public poolAmount;
+    event BonusRecord(address operate, address _to, uint256 _amount, uint256 _threshold, uint256 period, uint256 bonusAmount);
     constructor(ERC20 _rewardToken,address _spt,address _usdt){
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
@@ -436,15 +438,15 @@ contract dividend is Ownable {
         usdt = _usdt;
         spt = _spt;
         cycle = 604800;
-
+        bufferTime = 86400;
     }
-    function updatePool(uint256 time, uint256 amount) external {
-        poolAmount[time] = amount;
-        poolTime.push(time);
+    function setBufferTime(uint256 _bufferTime) public onlyOwner{
+        bufferTime = _bufferTime;
     }
     function setStartDividendTime(uint256 _startDividendTime) public onlyOwner{
+        require(!init);
         startDividendTime = _startDividendTime;
-        // updateUserAmount();
+        initStartTime = _startDividendTime;
     }
     function setCycle(uint256 _cycle) public onlyOwner{
         cycle = _cycle;
@@ -452,14 +454,7 @@ contract dividend is Ownable {
     function setRewardThreshold(uint256 _rewardThreshold) public onlyOwner{
         rewardThreshold  =_rewardThreshold;
     }
-    // function updateUserAmount() internal {
-    //     require(!status,"already update");
-    //     address[] memory users = ISPT(spt).getDividendUsers();
-    //      for(uint256 i= 0; i < users.length;i++){
-    //      userAmount[users[i]] = IERC20(spt).balanceOf(users[i]);
-    //     }
-    //     status = true;
-    // }
+
     function getBase() internal view returns(uint256){
         address[] memory users = ISPT(spt).getDividendUsers();
         uint256 total;
@@ -477,17 +472,13 @@ contract dividend is Ownable {
         }
         return total;
     }
+  
     function dividendToken()public {
         require(status,"plz update");
-        require(block.timestamp - startDividendTime >= cycle + 86400);
+        require(block.timestamp - startDividendTime >= cycle && block.timestamp - startDividendTime < cycle + bufferTime,"The time for dividends has not come yet");
         uint256 contractTokenBalance ;
-        for(uint256 i = 0; i < poolTime.length; i++){
-            if(poolTime[i] <= startDividendTime +cycle){
-             contractTokenBalance = poolAmount[poolTime[i]];
+            contractTokenBalance = IERC20(rewardToken).balanceOf(address(this));
             swapTokensForOther(contractTokenBalance);
-            break;
-            }
-        }
         uint256 rewardAmount = IERC20(rewardToken).balanceOf(address(this));
         uint256 SptAmount = 0;
         address[] memory users = ISPT(spt).getDividendUsers();
@@ -498,6 +489,7 @@ contract dividend is Ownable {
                    SptAmount = SptAmount.add(ISPT(spt).getSptAmount(users[i],times[j]));
                    if(SptAmount >=rewardThreshold ){
                     TransferHelper.safeTransfer(address(rewardToken), users[i], rewardAmount.div(getBase()));
+                    emit BonusRecord(msg.sender, users[i],rewardAmount.div(getBase()),rewardThreshold,cycle,getBase());
                    }
                 }
             }

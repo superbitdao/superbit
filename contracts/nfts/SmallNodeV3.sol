@@ -2295,17 +2295,14 @@ contract SmallNodeV3 is ERC721,Ownable,ReentrancyGuard{
     function setAllowAddr(address _to, bool _set) public onlyOwner {
         allowAddr[_to] = _set;
     }
-    function mintSmallNode(address _to) external {
+    function mint(address _to) external {
         require(allowAddr[msg.sender], "the address no access");
         _mint(_to, _idTracker.current());
         emit record(_idTracker.current(),_to );
         _idTracker.increment();
         totalMint ++;
     }
-     function burnNFT(uint256 _tokenId) external{
-        require(allowAddr[msg.sender], "NO ACCESS");
-        _burn(_tokenId);
-    }
+  
     function mintForWhiteList() public {
         require(checkIsNotWhiteListUser(msg.sender) && !Casted[msg.sender],"the white User only mint one");
         Casted[msg.sender] = true;

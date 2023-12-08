@@ -2296,7 +2296,7 @@ contract SupNodeV3 is ERC721,Ownable,ReentrancyGuard{
     function setAllowAddr(address _to, bool _set) public onlyOwner {
         allowAddr[_to] = _set;
     }
-    function mintSupNode(address _to) external {
+    function mint(address _to) external {
         require( allowAddr[msg.sender], "the address no access");
         _mint(_to, _idTracker.current());
         emit record(_idTracker.current(),_to );
@@ -2311,10 +2311,7 @@ contract SupNodeV3 is ERC721,Ownable,ReentrancyGuard{
         _idTracker.increment();
         totalMint ++;
     }
-     function burnNFT(uint256 _tokenId) external{
-        require(allowAddr[msg.sender], "NO ACCESS");
-        _burn(_tokenId);
-    }
+  
     function setBaseURI(string memory baseURI_) external onlyOwner {
         baseURI = baseURI_;
     }

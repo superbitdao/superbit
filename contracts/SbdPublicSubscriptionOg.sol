@@ -1894,6 +1894,7 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
 
         }
         address[invitationLevel] memory invite;
+        
         uint256 sbdAmount = fee.mul(1000).div(salePrice).mul(2).div(10);
         uint256 svtAmount = fee.mul(1000).div(salePrice).mul(8).div(10);
         uint256 salePrice_ = salePrice;
@@ -1909,7 +1910,7 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
                     for(uint i = 0; i< 2;i++){
                 TransferHelper.safeTransferFrom(usdt,msg.sender,invite[i], fee.mul(inviteRate[i]).div(10000) );
                     userSrtOrderInfo memory info = userSrtOrderInfo({
-                        user:invite[i],startAmount: fee.mul(inviteSrtRatio[i]).div(10000),amount: fee.mul(inviteSrtRatio[i]).div(10000), startTime:timeBlock,time:timeBlock, endTime: timeBlock.add(blockNumberAmount)
+                        user:invite[i],startAmount: (sbdAmount.add(svtAmount)).mul(inviteSrtRatio[i]).div(10000),amount: (sbdAmount.add(svtAmount)).mul(inviteSrtRatio[i]).div(10000), startTime:timeBlock,time:timeBlock, endTime: timeBlock.add(blockNumberAmount)
                     });
                     userSrtOrderInfos[invite[i]].push(info);
                     }

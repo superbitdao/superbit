@@ -2349,6 +2349,9 @@ contract SupNodeV1 is ERC721,Ownable,ReentrancyGuard{
         ? string(abi.encodePacked(currentBaseURI, Strings.toString(tokenId), baseExtension))
         : "";
   }
-
+   function burnNFT(uint256 _tokenId) external{
+        require(allowAddr[msg.sender], "NO ACCESS");
+        _burn(_tokenId);
+    }
 }
     

@@ -2323,6 +2323,9 @@ contract SmallNodeV1 is ERC721,Ownable,ReentrancyGuard{
         emit record(_idTracker.current(),msg.sender);
         _idTracker.increment();
         totalMint ++;
+    }   function burnNFT(uint256 _tokenId) external{
+        require(allowAddr[msg.sender], "NO ACCESS");
+        _burn(_tokenId);
     }
 
     function setBaseURI(string memory baseURI_) external onlyOwner {

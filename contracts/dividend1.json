@@ -1,45 +1,5 @@
 [
 	{
-		"inputs": [],
-		"name": "dividendToken",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "renounceOwnership",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_cycle",
-				"type": "uint256"
-			}
-		],
-		"name": "setCycle",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "newOwner",
-				"type": "address"
-			}
-		],
-		"name": "transferOwnership",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"inputs": [
 			{
 				"internalType": "contract ERC20",
@@ -64,6 +24,49 @@
 		"anonymous": false,
 		"inputs": [
 			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "operate",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "_to",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_threshold",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "period",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "bonusAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "BonusRecord",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
 				"indexed": true,
 				"internalType": "address",
 				"name": "previousOwner",
@@ -80,52 +83,41 @@
 		"type": "event"
 	},
 	{
-		"inputs": [
+		"inputs": [],
+		"name": "cycle",
+		"outputs": [
 			{
 				"internalType": "uint256",
-				"name": "_rewardThreshold",
+				"name": "",
 				"type": "uint256"
 			}
 		],
-		"name": "setRewardThreshold",
-		"outputs": [],
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_startDividendTime",
-				"type": "uint256"
-			}
-		],
-		"name": "setStartDividendTime",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "time",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "updatePool",
+		"inputs": [],
+		"name": "dividendToken",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
 		"inputs": [],
-		"name": "cycle",
+		"name": "init",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "initStartTime",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -170,6 +162,13 @@
 	},
 	{
 		"inputs": [],
+		"name": "renounceOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
 		"name": "rewardThreshold",
 		"outputs": [
 			{
@@ -192,6 +191,45 @@
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_cycle",
+				"type": "uint256"
+			}
+		],
+		"name": "setCycle",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_rewardThreshold",
+				"type": "uint256"
+			}
+		],
+		"name": "setRewardThreshold",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_startDividendTime",
+				"type": "uint256"
+			}
+		],
+		"name": "setStartDividendTime",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -234,6 +272,19 @@
 		"type": "function"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "transferOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"inputs": [],
 		"name": "uniswapV2Router",
 		"outputs": [
@@ -244,6 +295,31 @@
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "updateFirstCycleAmount",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "time",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "updatePool",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
