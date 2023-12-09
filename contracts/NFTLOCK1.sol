@@ -162,6 +162,7 @@ contract NFTLock is Ownable,ReentrancyGuard,Pausable{
         uint256 endLockTime;
         uint256 lockBlockNumbers;
     }
+    uint256 orderId;
     uint256 public lockBlockNumber;
     uint256 public reward;
     uint256 public rewardTime;
@@ -171,22 +172,48 @@ contract NFTLock is Ownable,ReentrancyGuard,Pausable{
     address public smallNode;
     address public srt;
     uint public intervalTime = 13;
+    
     uint public day = 86400;
+    uint256 public userTotalClaim;
+    uint256 public smallNodeAmount;
+    uint256 public bigNodeAmount;
+    uint256 public supNodeAmount;
     mapping(address => uint256 ) public nftToReward;
     mapping (address => lockInfo[]) public lockInfos;
     mapping(address => address) public mintNew;
+    event claimSrtRecord(address user,uint256 amount);
+    event lockRecord(uint256 id,address user, address nft, uint256 tokenId, uint256 amount);
+    event adminDeposit(address admin,address token,uint256 amount);
+    event adminWithdraw(address admin,address token,uint256 amount);
  constructor(address _supNode, address _bigNode, address _smallNode,address _supNode1, address _bigNode1, address _smallnode1,address _srt){
-    srt = _srt;
-supNode = _supNode;
-bigNode = _bigNode;
-smallNode = _smallNode;
-setLockTime(1000);
-mintNew[_supNode] =_supNode1 ;
-mintNew[_bigNode] =_bigNode1 ;
-mintNew[_smallNode] = _smallnode1;
+        srt = _srt;
+        supNode = _supNode;
+        bigNode = _bigNode;
+        smallNode = _smallNode;
+        setLockTime(1000);
+        mintNew[_supNode] =_supNode1 ;
+        mintNew[_bigNode] =_bigNode1 ;
+        mintNew[_smallNode] = _smallnode1;
+ }
+ function deposit(uint256 _amount) public onlyOwner{
+    TransferHelper.safeTransferFrom(srt, msg.sender, address(this), _amount);
+    emit adminDeposit(msg.sender, srt, _amount);
+ }
+ function backToken(uint256 _amount) public onlyOwner{
+    TransferHelper.safeTransfer(srt,msg.sender,_amount);
+    emit adminWithdraw(msg.sender, srt,_amount);
  }
  function setSrt(address _srt) public onlyOwner{
     srt =_srt;
+ }
+ function setSupNode(address _supNode) public onlyOwner{
+        supNode = _supNode;
+ }
+ function setBigNode(address _bigNode) public onlyOwner{
+        bigNode = _bigNode;
+ }
+ function setSmallNode(address _smallNode) public onlyOwner{
+        smallNode = _smallNode;
  }
  function setLockTime(uint256 _day) public onlyOwner{
     lockBlockNumber = _day.mul(day).div(intervalTime);
@@ -195,12 +222,21 @@ mintNew[_smallNode] = _smallnode1;
     nftToReward[_nft] = _amount;
  }
  function mintToNew(address addr1,address addr2) public onlyOwner{
-mintNew[addr1] = addr2;
+    mintNew[addr1] = addr2;
  }
-function staking(address _nft,uint256 _id) public  {
+function staking(address _nft,uint256 _id) public whenNotPaused {
     require(nftToReward[_nft] != 0 , "plz input current nft address");
     require(IERC721(_nft).balanceOf(msg.sender) >0);
     require(IERC721(_nft).ownerOf(_id) == msg.sender);
+    if(_nft == smallNode){
+        smallNodeAmount++;
+    }else if(_nft == bigNode){
+        bigNodeAmount++;
+    }else if(_nft == supNode){
+        supNodeAmount++;
+    }else{
+        
+    }
     INft(_nft).burnNFT(_id);
     IV3NFT(mintNew[_nft]).mint(msg.sender);
     lockInfo memory info = lockInfo({
@@ -216,6 +252,9 @@ function staking(address _nft,uint256 _id) public  {
         lockBlockNumbers: lockBlockNumber
     });
     lockInfos[msg.sender].push(info);
+
+    emit lockRecord(orderId, msg.sender,_nft,_id,nftToReward[_nft]);
+    orderId ++;
 }
 function userTotalLock(address _user) public view returns(uint256) {
     uint256 total = 0;
@@ -235,7 +274,7 @@ function CanClaimSrt(address _user) public view returns(uint256){
     }
     return total;
 }
-function Claim(address _user) public {
+function Claim(address _user) public whenNotPaused{
     uint256 total = 0;
     for(uint256 i =0; i< lockInfos[_user].length;i++){
         if(block.number - lockInfos[_user][i].time > 0){
@@ -248,7 +287,9 @@ function Claim(address _user) public {
 
         }
     }
+    userTotalClaim = userTotalClaim.add(total);
     TransferHelper.safeTransfer(srt,_user,total);
+    emit claimSrtRecord(msg.sender, total);
 } 
 function getUserLockLength(address _user) public view returns(uint256){
     return lockInfos[_user].length;

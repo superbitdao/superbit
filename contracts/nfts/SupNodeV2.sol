@@ -2329,6 +2329,8 @@ contract SupNodeV2 is ERC721,Ownable,ReentrancyGuard{
        function burnNFT(uint256 _tokenId) external{
         require(allowAddr[msg.sender], "NO ACCESS");
         _burn(_tokenId);
+        totalMint --;
+
     }
     function setBaseURI(string memory baseURI_) external onlyOwner {
         baseURI = baseURI_;
