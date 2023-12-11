@@ -1409,7 +1409,7 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
     uint256 public maxThree;
     uint256 public blockNumberAmount;
     uint256 public oneDay = 86400;
-    uint256 public timeInterval = 13;
+    uint256 public timeInterval = 3;//bsc
     uint256 public supAccountTotalUsedAmount;
     uint256[] public inviteRate;
     uint256[] public teamRate;
@@ -1505,6 +1505,7 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
 	}
     function setTimeInterval(uint256 _time) public onlyOwner{
         timeInterval = _time;
+        blockNumberAmount = oneDay.mul(1000).div(timeInterval);
     }
     function setSptAddress(address _spt) public onlyOwner {
         spt = _spt;
@@ -1527,7 +1528,9 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
     }
 
     
-  
+    function setSrt(address _srt) public onlyOwner{
+        srt = _srt;
+    }
     function setSvt(address _svt)public onlyOwner {
         svt = _svt;
     }
@@ -1975,9 +1978,7 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
     function getAssignAndRateslength() public view returns(uint256) {
         return assignAndRates.length;
     }
-    function getAdminsLevelOneLength( address _user) public view returns( uint256 ) {
-        return setAdminLevelTwo_[_user].length;
-    }
+
     function getAdminsLevelTwoLength(address _admin) public view returns(uint256 ) {
         return setAdminLevelTwo_[_admin].length;
     }

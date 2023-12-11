@@ -171,7 +171,7 @@ contract NFTLock is Ownable,ReentrancyGuard,Pausable{
     address public bigNode;
     address public smallNode;
     address public srt;
-    uint public intervalTime = 13;
+    uint public intervalTime = 3;
     
     uint public day = 86400;
     uint256 public userTotalClaim;

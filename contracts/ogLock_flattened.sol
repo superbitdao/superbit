@@ -472,7 +472,7 @@ using SafeMath for uint256;
     address public  svt;
     uint256 public oneYear;
     uint256 public oneDay = 86400;
-    uint256 public intervalTime  = 13;
+    uint256 public intervalTime  = 3;
     mapping(address => bool) public allowAddr;
     mapping(address => LockInfo[]) public userLockInfos;
     mapping(address => uint256 ) public notExtracted;
@@ -484,6 +484,8 @@ using SafeMath for uint256;
     }
     function setTimeInterval(uint256 _time) public onlyOwner{
         intervalTime = _time;
+        oneYear =  oneDay.mul(365).div(intervalTime);
+
     }
     function setSbd(IERC20 _sbd) public onlyOwner {
         sbd = _sbd;
@@ -553,7 +555,6 @@ using SafeMath for uint256;
                 userLockInfos[msg.sender][i].amount = 0;
             }else{
             userLockInfos[msg.sender][i].amount = userLockInfos[msg.sender][i].amount.sub(perReward);
-
             }
             totalTransfer = totalTransfer.add(perReward);
             userLockInfos[msg.sender][i].time = block.number;

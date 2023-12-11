@@ -2275,8 +2275,8 @@ contract SupNodeV2 is ERC721,Ownable,ReentrancyGuard{
     constructor() ERC721("SupNodeV2", "SupNodeV2"){
     baseURI = "https://bafybeihewbk2b3czyurbv5anzh6ylqean7qikxhphzaxvckvquswvg7t4q.ipfs.nftstorage.link/";
     initAmount = 200;
-     
-}   function getStatus()external view returns(bool){
+}   
+    function getStatus()external view returns(bool){
         if(initAmount == totalMint){
             return false;
         }
@@ -2330,7 +2330,6 @@ contract SupNodeV2 is ERC721,Ownable,ReentrancyGuard{
         require(allowAddr[msg.sender], "NO ACCESS");
         _burn(_tokenId);
         totalMint --;
-
     }
     function setBaseURI(string memory baseURI_) external onlyOwner {
         baseURI = baseURI_;

@@ -428,7 +428,8 @@ contract dividend is Ownable {
     uint256 public rewardThreshold;
     ERC20 public rewardToken;
     address public usdt;
-    mapping(uint256  => uint256 )public poolAmount;
+    mapping(address  => bool )public access;
+    mapping(uint256  => mapping(address => uint256)) public  userAmount;
     event BonusRecord(address operate, address _to, uint256 _amount, uint256 _threshold, uint256 period, uint256 bonusAmount);
     constructor(ERC20 _rewardToken,address _usdt,address _router){
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(_router);
@@ -440,7 +441,17 @@ contract dividend is Ownable {
     }
     function setSpt(address _spt) public onlyOwner{
         spt = _spt;
-
+    }
+    function setAccess(address _addr,bool _bool)  public onlyOwner {
+        access[_addr] = _bool;
+    }
+    function updateDividend(address _user,uint256 _amount) external{
+        require(access[msg.sender]);
+        if(block.timestamp >=  startDividendTime && block.timestamp < startDividendTime + cycle){
+            userAmount[startDividendTime][_user] +=_amount;
+        }else if(block.timestamp > startDividendTime + cycle + bufferTime ){
+            startDividendTime += cycle;
+        }
     }
     function setRouter(address _router) public onlyOwner{
     IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(_router);
@@ -467,40 +478,26 @@ contract dividend is Ownable {
     function getBase() internal view returns(uint256){
         address[] memory users = ISPT(spt).getDividendUsers();
         uint256 total;
-        uint256 SptAmount  = 0;
          for(uint256 i= 0; i < users.length;i++){
-            uint256[] memory times = ISPT(spt).getTimestamps(users[i]);
-            for(uint256 j = 0; j <times.length;j++ ){
-                if(times[j] > startDividendTime && times[j] <= startDividendTime + cycle ){
-                   SptAmount = SptAmount.add(ISPT(spt).getSptAmount(users[i],times[j]));
-                   if(SptAmount >= rewardThreshold ){
-                    total = total.add(1);
-                   }
-                }
+            if(userAmount[startDividendTime][users[i]] >= rewardThreshold){
+                total+=1;
             }
         }
         return total;
     }
   
-    function dividendToken()public {
+    function dividendToken() public {
         require(block.timestamp - startDividendTime >= cycle && block.timestamp - startDividendTime < cycle + bufferTime,"The time for dividends has not come yet");
         uint256 contractTokenBalance ;
             contractTokenBalance = IERC20(rewardToken).balanceOf(address(this));
             swapTokensForOther(contractTokenBalance);
         uint256 rewardAmount = IERC20(rewardToken).balanceOf(address(this));
-        uint256 SptAmount = 0;
         address[] memory users = ISPT(spt).getDividendUsers();
         for(uint256 i= 0; i < users.length;i++){
-            uint256[] memory times = ISPT(spt).getTimestamps(users[i]);
-            for(uint256 j = 0; j <times.length;j++ ){
-                if(times[j] > startDividendTime && times[j] <= startDividendTime + cycle ){
-                   SptAmount = SptAmount.add(ISPT(spt).getSptAmount(users[i],times[j]));
-                   if(SptAmount >=rewardThreshold ){
+                   if(userAmount[startDividendTime][users[i]]  >= rewardThreshold ){
                     TransferHelper.safeTransfer(address(rewardToken), users[i], rewardAmount.div(getBase()));
                     emit BonusRecord(msg.sender, users[i],rewardAmount.div(getBase()),rewardThreshold,cycle,getBase());
                    }
-                }
-            }
         }
         startDividendTime = startDividendTime.add(cycle);
     }
