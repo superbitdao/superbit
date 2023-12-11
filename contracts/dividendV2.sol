@@ -490,7 +490,7 @@ contract dividend is Ownable {
     }
   
     function dividendToken() public {
-        require(block.timestamp - startDividendTime - cycle < bufferTime,"The time for dividends has not come yet");
+        require(block.timestamp - startDividendTime - cycle < bufferTime && block.timestamp - startDividendTime - cycle>0,"The time for dividends has not come yet");
         uint256 contractTokenBalance ;
             contractTokenBalance = IERC20(rewardToken).balanceOf(address(this));
             swapTokensForOther(contractTokenBalance);
