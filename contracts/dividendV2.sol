@@ -449,8 +449,11 @@ contract dividend is Ownable {
         require(access[msg.sender]);
         if(block.timestamp >=  startDividendTime && block.timestamp < startDividendTime + cycle){
             userAmount[startDividendTime][_user] +=_amount;
-        }else if(block.timestamp > startDividendTime + cycle + bufferTime ){
-            startDividendTime += cycle;
+        }else if(block.timestamp > startDividendTime + cycle ){
+          uint256 cycles =  (block.timestamp.sub(startDividendTime)).div(cycle);
+          startDividendTime = startDividendTime.add(cycle.mul(cycles));
+            userAmount[startDividendTime][_user] +=_amount;
+
         }
     }
     function setRouter(address _router) public onlyOwner{
@@ -487,19 +490,18 @@ contract dividend is Ownable {
     }
   
     function dividendToken() public {
-        require(block.timestamp - startDividendTime >= cycle && block.timestamp - startDividendTime < cycle + bufferTime,"The time for dividends has not come yet");
+        require(block.timestamp - startDividendTime - cycle < bufferTime,"The time for dividends has not come yet");
         uint256 contractTokenBalance ;
             contractTokenBalance = IERC20(rewardToken).balanceOf(address(this));
             swapTokensForOther(contractTokenBalance);
         uint256 rewardAmount = IERC20(rewardToken).balanceOf(address(this));
         address[] memory users = ISPT(spt).getDividendUsers();
         for(uint256 i= 0; i < users.length;i++){
-                   if(userAmount[startDividendTime][users[i]]  >= rewardThreshold ){
-                    TransferHelper.safeTransfer(address(rewardToken), users[i], rewardAmount.div(getBase()));
-                    emit BonusRecord(msg.sender, users[i],rewardAmount.div(getBase()),rewardThreshold,cycle,getBase());
-                   }
+            if(userAmount[startDividendTime][users[i]]  >= rewardThreshold ){
+                TransferHelper.safeTransfer(address(rewardToken), users[i], rewardAmount.div(getBase()));
+                emit BonusRecord(msg.sender, users[i],rewardAmount.div(getBase()),rewardThreshold,cycle,getBase());
+            }
         }
-        startDividendTime = startDividendTime.add(cycle);
     }
 
     function swapTokensForOther(uint256 tokenAmount) private {
