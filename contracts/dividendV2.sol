@@ -786,20 +786,13 @@ pragma solidity  =0.8.18;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-interface ISPT{
-    function getDividendUsers() external view returns(address[] memory);
-    function getUserTimeLength(address _user) external view returns(uint256);
-    function getTimestamps(address _user) external view returns(uint256[] memory );
-    function getSptAmount(address _user, uint256 _time) external view returns(uint256);
-}
+
 contract dividend is Ownable {
     using SafeMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
     IUniswapV2Router02 public uniswapV2Router;
-
     EnumerableSet.AddressSet private blackList;
 
-    uint256[] private poolTime;
     bool public init;
     uint256 public initStartTime;
     uint256 public bufferTime;
@@ -807,13 +800,13 @@ contract dividend is Ownable {
     uint256 public cycle;
     address public spt;
     uint256 public rewardThreshold;
-    ERC20 public rewardToken;
+    address public rewardToken;
     address public usdt;
     mapping(address  => bool )public access;
-    mapping(address => bool) public blackUser;
     mapping(uint256  => mapping(address => uint256)) public  userAmount;
+    mapping(uint256 => address[]) public cycleUser;
     event BonusRecord(address operate, address _to, uint256 _amount, uint256 _threshold, uint256 period, uint256 bonusAmount);
-    constructor(ERC20 _rewardToken,address _usdt,address _router){
+    constructor(address _rewardToken,address _usdt,address _router){
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(_router);
         uniswapV2Router = _uniswapV2Router;
         rewardToken = _rewardToken;
@@ -822,11 +815,9 @@ contract dividend is Ownable {
         bufferTime = 86400;
     }
     function addBlackUser(address _user) public onlyOwner{
-        blackUser[_user] = true;
         blackList.add(_user);
     }
     function removeBlackUser(address _user) public onlyOwner{
-        blackUser[_user] = false;
         blackList.remove(_user);
     }
    function IsNotBlackUser(address _user) public view returns(bool) {
@@ -845,10 +836,12 @@ contract dividend is Ownable {
         require(access[msg.sender]);
         if(block.timestamp >=  startDividendTime && block.timestamp < startDividendTime + cycle){
             userAmount[startDividendTime][_user] +=_amount;
+            cycleUser[startDividendTime].push(_user);
         }else if(block.timestamp > startDividendTime + cycle ){
-          uint256 cycles =  (block.timestamp.sub(startDividendTime)).div(cycle);
+          uint256 cycles =  (block.timestamp.sub(initStartTime)).div(cycle);
           startDividendTime = startDividendTime.add(cycle.mul(cycles));
             userAmount[startDividendTime][_user] +=_amount;
+            cycleUser[startDividendTime].push(_user);
 
         }
     }
@@ -874,11 +867,10 @@ contract dividend is Ownable {
         rewardThreshold  =_rewardThreshold;
     }
 
-    function getBase() internal view returns(uint256){
-        address[] memory users = ISPT(spt).getDividendUsers();
+    function getBase(uint256 _cycle) internal view returns(uint256){
         uint256 total;
-         for(uint256 i= 0; i < users.length;i++){
-            if(userAmount[startDividendTime][users[i]] >= rewardThreshold){
+         for(uint256 i= 0; i < cycleUser[_cycle].length;i++){
+            if(userAmount[startDividendTime][cycleUser[_cycle][i]] >= rewardThreshold){
                 total+=1;
             }
         }
@@ -886,19 +878,20 @@ contract dividend is Ownable {
     }
   
     function dividendToken() public {
-        require(block.timestamp - startDividendTime - cycle < bufferTime && block.timestamp - startDividendTime - cycle>0,"The time for dividends has not come yet");
+        require(block.timestamp - startDividendTime - cycle < bufferTime &&
+                block.timestamp - startDividendTime - cycle > 0,
+                "The time for dividends has not come yet");
         uint256 contractTokenBalance ;
-            contractTokenBalance = IERC20(rewardToken).balanceOf(address(this));
+            contractTokenBalance = IERC20(usdt).balanceOf(address(this));
             swapTokensForOther(contractTokenBalance);
         uint256 rewardAmount = IERC20(rewardToken).balanceOf(address(this));
-        address[] memory users = ISPT(spt).getDividendUsers();
-        for(uint256 i= 0; i < users.length;i++){
-            if( blackUser[users[i]]){
-                continue;
-            }
-            if(userAmount[startDividendTime][users[i]]  >= rewardThreshold){
-                TransferHelper.safeTransfer(address(rewardToken), users[i], rewardAmount.div(getBase()));
-                emit BonusRecord(msg.sender, users[i],rewardAmount.div(getBase()),rewardThreshold,cycle,getBase());
+        uint256 usersAmount = getBase(startDividendTime);
+        uint256 cycles =  (block.timestamp.sub(initStartTime)).div(cycle);
+        startDividendTime = initStartTime.add(cycle.mul(cycles)).sub(cycle);
+        for(uint256 i= 0; i < cycleUser[startDividendTime].length;i++){
+            if(userAmount[startDividendTime][cycleUser[startDividendTime][i]]  >= rewardThreshold){
+                TransferHelper.safeTransfer(address(rewardToken),cycleUser[startDividendTime][i], rewardAmount.div(usersAmount));
+                emit BonusRecord(msg.sender, cycleUser[startDividendTime][i],rewardAmount.div(usersAmount),rewardThreshold,cycle,usersAmount);
             }
         }
     }
