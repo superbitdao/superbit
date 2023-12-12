@@ -387,21 +387,31 @@ interface IDividendV2{
 }
 contract SPT is ERC20 {
     using EnumerableSet for EnumerableSet.AddressSet;
-    EnumerableSet.AddressSet private dividendUser;
+    EnumerableSet.AddressSet private blackList;
+
     address admin;
     address public dividendAddress;
-    mapping(address =>bool ) public access;
-    // mapping(address =>  uint256[]) public timestamps;
-    // mapping(address =>mapping(uint256 => uint256) )public timeToValue;
+    mapping(address => bool ) public access;
     event record(address user, uint256 amount,uint256 blockTime);
     constructor (address _address) ERC20("SPT","SPT"){
         admin = msg.sender;
         dividendAddress =_address;
-
     }
     modifier onlyAdmin{
         require(msg.sender == admin,"no access ");
         _;
+    }
+    function addBlackUser(address _user) public onlyAdmin{
+        blackList.add(_user);
+    }
+    function removeBlackUser(address _user) public onlyAdmin{
+        blackList.remove(_user);
+    }
+   function IsNotBlackUser(address _user) public view returns(bool) {
+        return blackList.contains(_user);
+    }
+    function getBlackUserList() public view returns(address[] memory) {
+        return blackList.values();
     }
     function setDividendAddress(address _address)public onlyAdmin{
         dividendAddress = _address;
@@ -411,33 +421,17 @@ contract SPT is ERC20 {
     }
     function mint(address _to,uint256 _amount) external{
         require(access[msg.sender],"NO ACCESS");
-        // uint256 time = block.timestamp;
+        if(IsNotBlackUser(_to)){
+            
+        }
         uint256 blockTime = IDividendV2(dividendAddress).getStartDividendTime();
         _mint(_to,_amount);
-        // timeToValue[_to][time] = _amount;
-        // timestamps[_to].push(time);
         IDividendV2(dividendAddress).updateDividend(_to,_amount);
-        if(!IsNotUserExit(_to)){
-            dividendUser.add(_to);
-        }
         emit record(_to, _amount,blockTime);
     }
-// function getUserTimeLength(address _user) external view returns(uint256){
-//     return timestamps[_user].length;
-// }
-// function getTimestamps(address _user) external view returns(uint256[] memory ){
-//     return timestamps[_user];
-// }
-// function getSptAmount(address _user, uint256 _time) external view returns(uint256)
-// {
-//     return timeToValue[_user][_time];
-// }
+    function transferAdmin(address _to) public onlyAdmin{
+        admin = _to;
 
-    function getDividendUsers() external view returns(address[] memory){
-        return dividendUser.values();
-    }
-    function IsNotUserExit(address _user) internal view returns(bool){
-        return dividendUser.contains(_user);
     }
     function getTotalSupply() public view returns(uint256 ) {
         return totalSupply();
