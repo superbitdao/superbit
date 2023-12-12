@@ -1474,6 +1474,7 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
     event blackUser(address operator, address user);
     event withdrawRecord(address addr, uint256 amount);
     event deposit(address addr , uint256 amount);
+    event withdrawSrtRecord(address addr, uint256 amount);
     modifier onlyAdminTwo() {
         require(checkAddrForAdminLevelTwo(msg.sender));
         _;
@@ -1505,7 +1506,7 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
 	}
     function setTimeInterval(uint256 _time) public onlyOwner{
         timeInterval = _time;
-        blockNumberAmount = oneDay.mul(1000).div(timeInterval);
+        blockNumberAmount = oneDay.mul(1000).div(_time);
     }
     function setSptAddress(address _spt) public onlyOwner {
         spt = _spt;
@@ -1875,6 +1876,7 @@ contract SbdPublicSubscriptionOg is Ownable,Pausable ,ReentrancyGuard{
             }
         }
         TransferHelper.safeTransfer(srt, _user,total);
+        emit withdrawSrtRecord(_user, total);
      }
     function purchase(uint256 fee) external  whenNotPaused  nonReentrant{
         require(isNotRegister[msg.sender]  );
