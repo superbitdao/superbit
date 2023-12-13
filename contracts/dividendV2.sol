@@ -477,9 +477,11 @@ contract dividend is Ownable {
         bufferTime = _bufferTime;
     }
     function setStartDividendTime(uint256 _startDividendTime) public onlyOwner{
-        require(!init);
+        require(!init,"The contract has been initialized");
         startDividendTime = _startDividendTime;
         initStartTime = _startDividendTime;
+        init = true;
+
     }
     function setCycle(uint256 _cycle) public onlyOwner{
         cycle = _cycle;
