@@ -442,16 +442,28 @@ contract dividend is Ownable {
     function setAccess(address _addr,bool _bool)  public onlyOwner {
         access[_addr] = _bool;
     }
+    function checkAddressRepeat(uint256 _startDividendTime,address _user) internal view returns(bool){
+        for(uint256 i = 0; i < cycleUser[_startDividendTime].length;i++ ){
+            if(_user == cycleUser[_startDividendTime][i]){
+                return false;
+            }
+        }
+        return true;
+    }
     function updateDividend(address _user,uint256 _amount) external{
         require(access[msg.sender]);
         if(block.timestamp >=  startDividendTime && block.timestamp < startDividendTime + cycle){
             userAmount[startDividendTime][_user] +=_amount;
+            if(checkAddressRepeat(startDividendTime,_user)){
             cycleUser[startDividendTime].push(_user);
+            }
         }else if(block.timestamp > startDividendTime + cycle ){
           uint256 cycles =  (block.timestamp.sub(startDividendTime)).div(cycle);
           startDividendTime = startDividendTime.add(cycle.mul(cycles));
             userAmount[startDividendTime][_user] +=_amount;
+            if(checkAddressRepeat(startDividendTime,_user)){
             cycleUser[startDividendTime].push(_user);
+            }
 
         }
     }
@@ -487,21 +499,22 @@ contract dividend is Ownable {
         return total;
     }
   
-    function dividendToken() public {
-        require(block.timestamp > startDividendTime + cycle &&
-                block.timestamp < startDividendTime + cycle + bufferTime,
+ function dividendToken() public {
+        uint256 cycles =  (block.timestamp.sub(initStartTime)).div(cycle);
+        uint bonusDividendTime = initStartTime.add(cycle.mul(cycles)).sub(cycle);
+        require(block.timestamp > bonusDividendTime + cycle &&
+                block.timestamp < bonusDividendTime + cycle + bufferTime,
                 "The time for dividends has not come yet");
         uint256 contractTokenBalance ;
             contractTokenBalance = IERC20(usdt).balanceOf(address(this));
             swapTokensForOther(contractTokenBalance);
         uint256 rewardAmount = IERC20(rewardToken).balanceOf(address(this));
-        uint256 cycles =  (block.timestamp.sub(initStartTime)).div(cycle);
-        startDividendTime = initStartTime.add(cycle.mul(cycles)).sub(cycle);
-        uint256 usersAmount = getBase(startDividendTime);
-        for(uint256 i= 0; i < cycleUser[startDividendTime].length;i++){
-            if(userAmount[startDividendTime][cycleUser[startDividendTime][i]]  >= rewardThreshold){
-                TransferHelper.safeTransfer(address(rewardToken),cycleUser[startDividendTime][i], rewardAmount.div(usersAmount));
-                emit BonusRecord(msg.sender, cycleUser[startDividendTime][i],rewardAmount.div(usersAmount),rewardThreshold,cycle,usersAmount);
+       
+        uint256 usersAmount = getBase(bonusDividendTime);
+        for(uint256 i= 0; i < cycleUser[bonusDividendTime].length;i++){
+            if(userAmount[bonusDividendTime][cycleUser[bonusDividendTime][i]]  >= rewardThreshold){
+                TransferHelper.safeTransfer(address(rewardToken),cycleUser[bonusDividendTime][i], rewardAmount.div(usersAmount));
+                emit BonusRecord(msg.sender, cycleUser[bonusDividendTime][i],rewardAmount.div(usersAmount),rewardThreshold,cycle,usersAmount);
             }
         }
     }
