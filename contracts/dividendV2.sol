@@ -481,7 +481,6 @@ contract dividend is Ownable {
         startDividendTime = _startDividendTime;
         initStartTime = _startDividendTime;
         init = true;
-
     }
     function setCycle(uint256 _cycle) public onlyOwner{
         cycle = _cycle;
@@ -510,7 +509,6 @@ contract dividend is Ownable {
             contractTokenBalance = IERC20(usdt).balanceOf(address(this));
             swapTokensForOther(contractTokenBalance);
         uint256 rewardAmount = IERC20(rewardToken).balanceOf(address(this));
-       
         uint256 usersAmount = getBase(bonusDividendTime);
         for(uint256 i= 0; i < cycleUser[bonusDividendTime].length;i++){
             if(userAmount[bonusDividendTime][cycleUser[bonusDividendTime][i]]  >= rewardThreshold){
