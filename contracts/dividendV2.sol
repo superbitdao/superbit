@@ -464,7 +464,6 @@ contract dividend is Ownable {
             if(checkAddressRepeat(startDividendTime,_user)){
             cycleUser[startDividendTime].push(_user);
             }
-
         }
     }
     function setRouter(address _router) public onlyOwner{
@@ -492,7 +491,7 @@ contract dividend is Ownable {
     function getBase(uint256 _cycle) internal view returns(uint256){
         uint256 total;
          for(uint256 i= 0; i < cycleUser[_cycle].length;i++){
-            if(userAmount[startDividendTime][cycleUser[_cycle][i]] >= rewardThreshold){
+            if(userAmount[_cycle][cycleUser[_cycle][i]] >= rewardThreshold){
                 total+=1;
             }
         }
