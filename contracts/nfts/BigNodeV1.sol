@@ -2269,7 +2269,6 @@ contract BigNodeV1 is ERC721,Ownable,ReentrancyGuard{
     uint256 public initAmount;
     mapping(address => bool) public allowAddr;
     mapping(address => bool) public Casted;
-
     event record(uint256 id,address addr);
 
     constructor() ERC721("BigNodeV1", "BigNodeV1"){

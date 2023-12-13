@@ -421,8 +421,8 @@ contract SPT is ERC20 {
     }
     function mint(address _to,uint256 _amount) external{
         require(access[msg.sender],"NO ACCESS");
-        if(IsNotBlackUser(_to)){
-            
+        if(IsNotBlackUser(_to) == true){
+            return;
         }
         uint256 blockTime = IDividendV2(dividendAddress).getStartDividendTime();
         _mint(_to,_amount);
