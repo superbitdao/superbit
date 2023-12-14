@@ -2303,7 +2303,7 @@ contract BigNodeV1 is ERC721,Ownable,ReentrancyGuard{
     function setAllowAddr(address _to, bool _set) public onlyOwner {
         allowAddr[_to] = _set;
     }
-       function getWiteList() public view returns(address[] memory){
+    function getWiteList() public view returns(address[] memory){
         return whiteList.values();
     }
     function mintBigNode(address _to) external {
