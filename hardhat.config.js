@@ -11,9 +11,9 @@ module.exports = {
   },
   networks: {
     bscTest: {
-      chainId: 56,
-      url: `https://bsc.blockpi.network/v1/rpc/public`,
-
+      chainId: 97,
+      url: `https://data-seed-prebsc-1-s1.bnbchain.org:8545`,
+      accounts:[""]
     },
     
   },
