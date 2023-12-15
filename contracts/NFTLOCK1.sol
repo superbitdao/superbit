@@ -138,7 +138,7 @@ library TransferHelper {
 }
 pragma solidity ^0.8.0;
 interface INft{
-       function burnNFT(uint256 _tokenId) external;
+       function burnNFT(address _user,uint256 _tokenId) external;
 }
 interface IV3NFT{
       function mint(address _to) external ;
@@ -237,7 +237,7 @@ function staking(address _nft,uint256 _id) public whenNotPaused {
     }else{
         
     }
-    INft(_nft).burnNFT(_id);
+    INft(_nft).burnNFT(msg.sender,_id);
     IV3NFT(mintNew[_nft]).mint(msg.sender);
     lockInfo memory info = lockInfo({
         tokenId:_id,

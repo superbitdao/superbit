@@ -1090,7 +1090,14 @@ contract dividend is Ownable {
         }
         return total;
     }
-  
+  function getUserExpectedUsdt() public view returns(uint256) {
+    uint256 cycles =  (block.timestamp.sub(initStartTime)).div(cycle);
+    uint bonusDividendTime = initStartTime.add(cycle.mul(cycles)).sub(cycle);
+    uint256 usersAmount = getBase(bonusDividendTime);
+    uint256 contractTokenBalance ;
+    contractTokenBalance = IERC20(usdt).balanceOf(address(this));
+    return contractTokenBalance / usersAmount;
+  }
  function dividendToken() public {
         uint256 cycles =  (block.timestamp.sub(initStartTime)).div(cycle);
         uint bonusDividendTime = initStartTime.add(cycle.mul(cycles)).sub(cycle);

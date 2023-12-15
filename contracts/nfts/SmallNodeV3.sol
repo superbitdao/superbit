@@ -2260,15 +2260,19 @@ contract SmallNodeV3 is ERC721,Ownable,ReentrancyGuard{
     using SafeMath for uint256;
     using Counters for Counters.Counter;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.UintSet;
+
 
     Counters.Counter private _idTracker;
     EnumerableSet.AddressSet private whiteList;
-    uint256 public totalMint;
+    uint256 public Minted;
     
     string public baseURI;
     string public baseExtension = ".json";
     mapping(address => bool) public allowAddr;
     mapping(address => bool) public Casted;
+    mapping(address => EnumerableSet.UintSet) private userMintIds;
+
     event record(uint256 id,address addr);
     constructor() ERC721("SmallNodeV3", "SmallNodeV3"){
     baseURI = "https://bafybeid3egoof4ierq5e7uqm5av3hbgdypju4qehieyw4leawlclhnaclq.ipfs.nftstorage.link/";
@@ -2298,18 +2302,26 @@ contract SmallNodeV3 is ERC721,Ownable,ReentrancyGuard{
     function mint(address _to) external {
         require(allowAddr[msg.sender], "the address no access");
         _mint(_to, _idTracker.current());
+        userMintIds[_to].add(_idTracker.current());
+
         emit record(_idTracker.current(),_to );
         _idTracker.increment();
-        totalMint ++;
+        Minted ++;
     }
   
     function mintForWhiteList() public {
         require(checkIsNotWhiteListUser(msg.sender) && !Casted[msg.sender],"the white User only mint one");
         Casted[msg.sender] = true;
         _mint(msg.sender, _idTracker.current());
+        userMintIds[msg.sender].add(_idTracker.current());
+
         emit record(_idTracker.current(),msg.sender);
         _idTracker.increment();
-        totalMint ++;
+        Minted ++;
+    }
+
+    function getUserMintIds(address _user) public view returns(uint256[] memory){
+        return userMintIds[_user].values();
     }
 
     function setBaseURI(string memory baseURI_) external onlyOwner {

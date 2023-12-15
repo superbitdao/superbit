@@ -1,33 +1,47 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
-// will compile your contracts, add the Hardhat Runtime Environment's members to the
-// global scope, and execute the script.
-const hre = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
+const fs = require("fs");
+const path = require("path");
 
-async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
+async function deployAllContracts() {
+    const contractFolder = "./contracts/nfts"; 
+    const deployedContractAddresses = [];
 
-  const lockedAmount = hre.ethers.parseEther("0.001");
+    const files = fs.readdirSync(contractFolder);
+    
+    for (const file of files) {
+        if (file.endsWith(".sol")) {
+            const contractName = path.basename(file, ".sol");
+            console.log(`Deploying contract: ${contractName}`);
 
-  const lock = await hre.ethers.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
-  });
+            const Contract = await ethers.getContractFactory(contractName);
 
-  await lock.waitForDeployment();
+            // If you want to deploy an upgradable contract, you can use the following code instead:
+            // const Contract = await upgrades.deployProxy(await ethers.getContractFactory(contractName));
 
-  console.log(
-    `Lock with ${ethers.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.target}`
-  );
+            const contract = await Contract.deploy();
+            await contract.deployed();
+
+            const contractAddress = contract.address;
+            console.log(`Contract ${contractName} address: ${contractAddress}`);
+            deployedContractAddresses.push({ contractName, contractAddress });
+        }
+    }
+
+    return deployedContractAddresses;
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+async function main() {
+    const deployedAddresses = await deployAllContracts();
+
+    console.log("All contracts deployed:");
+    deployedAddresses.forEach(({ contractName, contractAddress }) => {
+        console.log(`Contract ${contractName} address: ${contractAddress}`);
+    });
+}
+
+main()
+    .then(() => process.exit(0))
+    .catch((error) => {
+        console.error(error);
+        process.exit(1);
+    });

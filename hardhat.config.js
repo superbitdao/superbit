@@ -11,9 +11,10 @@ module.exports = {
   },
   networks: {
     bscTest: {
-      chainId: 97,
-      url: `https://bsc-testnet.blockpi.network/v1/rpc/public`,
-      accounts: [`01eb2f1c5a85791109046cb239d24cd190abbca0fd9c3d2e92e4f1a351ccbe2e`],
+      chainId: 56,
+      url: `https://bsc.blockpi.network/v1/rpc/public`,
+
     },
+    
   },
 };

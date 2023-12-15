@@ -2260,14 +2260,16 @@ contract BigNodeV3 is ERC721,Ownable,ReentrancyGuard{
     using SafeMath for uint256;
     using Counters for Counters.Counter;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.UintSet;
 
     Counters.Counter private _idTracker;
     EnumerableSet.AddressSet private whiteList;
-    uint256 public totalMint;
     string public baseURI;
     string public baseExtension = ".json";
     mapping(address => bool) public allowAddr;
     mapping(address => bool) public Casted;
+        uint256 public Minted;
+    mapping(address => EnumerableSet.UintSet) private userMintIds;
 
     event record(uint256 id,address addr);
 
@@ -2299,9 +2301,13 @@ contract BigNodeV3 is ERC721,Ownable,ReentrancyGuard{
     function mint(address _to) external {
         require(allowAddr[msg.sender], "the address no access");
         _mint(_to, _idTracker.current());
+
+        userMintIds[_to].add(_idTracker.current());
+
         emit record(_idTracker.current(),_to);
         _idTracker.increment();
-        totalMint ++;
+        Minted ++;
+
     }
  
       function mintForWhiteList() public {
@@ -2309,9 +2315,16 @@ contract BigNodeV3 is ERC721,Ownable,ReentrancyGuard{
 
         Casted[msg.sender] = true;
         _mint(msg.sender, _idTracker.current());
+        userMintIds[msg.sender].add(_idTracker.current());
+
         emit record(_idTracker.current(),msg.sender );
         _idTracker.increment();
-        totalMint ++;
+        Minted ++;
+
+    }
+
+    function getUserMintIds(address _user) public view returns(uint256[] memory){
+        return userMintIds[_user].values();
     }
 
 
