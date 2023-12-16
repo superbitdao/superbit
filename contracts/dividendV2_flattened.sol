@@ -1001,12 +1001,13 @@ pragma solidity  =0.8.18;
 
 
 
-contract dividend is Ownable {
+contract dividendV2 is Ownable {
     using SafeMath for uint256;
 
     IUniswapV2Router02 public uniswapV2Router;
 
     bool public init;
+    bool public status;
     uint256 public initStartTime;
     uint256 public bufferTime;
     uint256 public startDividendTime;
@@ -1027,7 +1028,12 @@ contract dividend is Ownable {
         cycle = 604800;
         bufferTime = 86400;
     }
-
+    function getStatus() external view returns(bool){
+        return status;
+    }
+    function changeStatus() public onlyOwner{
+        status = !status;
+    }
     function setSpt(address _spt) public onlyOwner{
         spt = _spt;
     }

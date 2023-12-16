@@ -384,22 +384,34 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 interface IDividendV2{
     function getStartDividendTime()external view returns(uint256 );
     function updateDividend(address _user,uint256 _amount) external;
+    function getStatus() external view returns(bool);
 }
 contract SPT is ERC20 {
     using EnumerableSet for EnumerableSet.AddressSet;
     EnumerableSet.AddressSet private blackList;
-
-    address admin;
-    address public dividendAddress;
+    address[] public DividendV2s;
+    address public admin;
     mapping(address => bool ) public access;
     event record(address user, uint256 amount,uint256 blockTime);
-    constructor (address _address) ERC20("SPT","SPT"){
+    constructor () ERC20("SPT","SPT"){
         admin = msg.sender;
-        dividendAddress =_address;
     }
     modifier onlyAdmin{
         require(msg.sender == admin,"no access ");
         _;
+    }
+    function addDividendV2s(address[] memory _addr) public onlyAdmin{
+        for(uint256 i= 0 ; i < _addr.length;i++){
+            DividendV2s.push(_addr[i]);
+        }
+    }
+    function removeDividendV2s(address _addr) public onlyAdmin{
+        for(uint256 i =0; i<DividendV2s.length;i++){
+            if(_addr == DividendV2s[i] ){
+                DividendV2s[i] = DividendV2s[DividendV2s.length - 1];
+                DividendV2s.pop();
+            }
+        }
     }
     function addBlackUser(address _user) public onlyAdmin{
         blackList.add(_user);
@@ -413,9 +425,7 @@ contract SPT is ERC20 {
     function getBlackUserList() public view returns(address[] memory) {
         return blackList.values();
     }
-    function setDividendAddress(address _address)public onlyAdmin{
-        dividendAddress = _address;
-    }
+ 
     function setAccess(address _to ,bool _bool) public onlyAdmin{
         access[_to] =_bool;
     }
@@ -424,10 +434,18 @@ contract SPT is ERC20 {
         if(IsNotBlackUser(_to) == true){
             return;
         }
-        uint256 blockTime = IDividendV2(dividendAddress).getStartDividendTime();
         _mint(_to,_amount);
-        IDividendV2(dividendAddress).updateDividend(_to,_amount);
+        if(DividendV2s.length == 0){
+            return;
+        }
+        for(uint256 i =0 ; i < DividendV2s.length;i++){
+        if(IDividendV2(DividendV2s[i]).getStatus()){
+        IDividendV2(DividendV2s[i]).updateDividend(_to,_amount);
+        uint256 blockTime = IDividendV2(DividendV2s[i]).getStartDividendTime();
         emit record(_to, _amount,blockTime);
+        }
+        }
+     
     }
     function transferAdmin(address _to) public onlyAdmin{
         admin = _to;
