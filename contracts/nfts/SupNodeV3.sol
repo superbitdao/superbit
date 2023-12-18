@@ -2264,7 +2264,6 @@ contract SupNodeV3 is ERC721,Ownable,ReentrancyGuard{
 
     Counters.Counter private _idTracker;
     EnumerableSet.AddressSet private whiteList;
-    uint256 public totalMint;
     string public baseURI;
     string public baseExtension = ".json";
     uint256 public Minted;
@@ -2306,7 +2305,6 @@ contract SupNodeV3 is ERC721,Ownable,ReentrancyGuard{
        
         emit record(_idTracker.current(),_to );
         _idTracker.increment();
-        totalMint ++;
         Minted ++;
 
     }
@@ -2318,7 +2316,6 @@ contract SupNodeV3 is ERC721,Ownable,ReentrancyGuard{
 
         emit record(_idTracker.current(),msg.sender );
         _idTracker.increment();
-        totalMint ++;
         Minted ++;
 
     }
