@@ -18,6 +18,8 @@ contract S {
     function getaddr() public view returns(address){
         return address(0);
     }
-
+  function getCurrentTimestamp() public view returns(uint256 ){
+        return block.timestamp;
+    }
 
 }

@@ -1012,7 +1012,6 @@ contract dividendV2 is Ownable {
     uint256 public bufferTime;
     uint256 public startDividendTime;
     uint256 public cycle;
-    address public spt;
     uint256 public rewardThreshold;
     address public rewardToken;
     address public usdt;
@@ -1033,9 +1032,6 @@ contract dividendV2 is Ownable {
     }
     function changeStatus() public onlyOwner{
         status = !status;
-    }
-    function setSpt(address _spt) public onlyOwner{
-        spt = _spt;
     }
     function setAccess(address _addr,bool _bool)  public onlyOwner {
         access[_addr] = _bool;
@@ -1068,8 +1064,10 @@ contract dividendV2 is Ownable {
     IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(_router);
     uniswapV2Router = _uniswapV2Router;
     }
-    function getStartDividendTime()external view returns(uint256 ){
-        return startDividendTime;
+    function getStartDividendTime() external view returns(uint256){
+        uint256 cycles =  (block.timestamp.sub(startDividendTime)).div(cycle);
+        uint256 _startDividendTime = startDividendTime.add(cycle.mul(cycles));
+        return _startDividendTime;
     }
     function setBufferTime(uint256 _bufferTime) public onlyOwner{
         bufferTime = _bufferTime;
@@ -1121,6 +1119,9 @@ contract dividendV2 is Ownable {
                 emit BonusRecord(msg.sender, cycleUser[bonusDividendTime][i],rewardAmount.div(usersAmount),rewardThreshold,cycle,usersAmount);
             }
         }
+    }
+    function getCurrentTimestamp() public view returns(uint256 ){
+        return block.timestamp;
     }
 
     function swapTokensForOther(uint256 tokenAmount) private {

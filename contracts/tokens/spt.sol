@@ -392,7 +392,8 @@ contract SPT is ERC20 {
     address[] public DividendV2s;
     address public admin;
     mapping(address => bool ) public access;
-    event record(address user, uint256 amount,uint256 blockTime);
+    mapping(address => uint256) public DivideId;
+    event record(uint256 DividendV2Id,address user, uint256 amount,uint256 blockTime);
     constructor () ERC20("SPT","SPT"){
         admin = msg.sender;
     }
@@ -403,7 +404,13 @@ contract SPT is ERC20 {
     function addDividendV2s(address[] memory _addr) public onlyAdmin{
         for(uint256 i= 0 ; i < _addr.length;i++){
             DividendV2s.push(_addr[i]);
+            DivideId[_addr[i]] = i;
         }
+    }
+    function setDividendV2s(uint256 _id,address _addr) public onlyAdmin{
+        DividendV2s[_id] = _addr;
+        DivideId[_addr] = _id;
+
     }
     function removeDividendV2s(address _addr) public onlyAdmin{
         for(uint256 i =0; i<DividendV2s.length;i++){
@@ -442,7 +449,7 @@ contract SPT is ERC20 {
         if(IDividendV2(DividendV2s[i]).getStatus()){
         IDividendV2(DividendV2s[i]).updateDividend(_to,_amount);
         uint256 blockTime = IDividendV2(DividendV2s[i]).getStartDividendTime();
-        emit record(_to, _amount,blockTime);
+        emit record(DivideId[DividendV2s[i]],_to, _amount,blockTime);
         }
         }
      
@@ -453,6 +460,9 @@ contract SPT is ERC20 {
     }
     function getTotalSupply() public view returns(uint256 ) {
         return totalSupply();
+    }
+    function getDividendV2sLength() public view returns(uint256){
+        return DividendV2s.length;
     }
 function transfer(address to, uint256 amount) public virtual override returns (bool) {
     require(false);
