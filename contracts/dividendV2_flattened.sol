@@ -1064,10 +1064,19 @@ contract dividendV2 is Ownable {
     IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(_router);
     uniswapV2Router = _uniswapV2Router;
     }
+    
     function getStartDividendTime() external view returns(uint256){
         uint256 cycles =  (block.timestamp.sub(startDividendTime)).div(cycle);
         uint256 _startDividendTime = startDividendTime.add(cycle.mul(cycles));
         return _startDividendTime;
+    }
+    function getCurrentUsdtBalance()public view returns(uint256){
+        return  IERC20(usdt).balanceOf(address(this));
+    }
+    function getCurrentBonusAmount() public view returns(uint256){
+        uint256 cycles =  (block.timestamp.sub(startDividendTime)).div(cycle);
+        uint256 _startDividendTime = startDividendTime.add(cycle.mul(cycles));
+        return getBase(_startDividendTime);
     }
     function setBufferTime(uint256 _bufferTime) public onlyOwner{
         bufferTime = _bufferTime;
