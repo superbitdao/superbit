@@ -1049,7 +1049,8 @@ contract dividendV2 is Ownable {
         if(block.timestamp >=  startDividendTime && block.timestamp < startDividendTime + cycle){
             userAmount[startDividendTime][_user] +=_amount;
             if(checkAddressRepeat(startDividendTime,_user)){
-            cycleUser[startDividendTime].push(_user);
+            cycleUser[startDividendTime].
+            push(_user);
             }
         }else if(block.timestamp > startDividendTime + cycle ){
           uint256 cycles =  (block.timestamp.sub(startDividendTime)).div(cycle);
